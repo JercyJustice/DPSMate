@@ -501,9 +501,12 @@ end
 function DPSMate.Parser:OnEvent(event, msg)
 	event = event or _G.event
 	msg = msg or arg1
-	if event and Execute[event] then
-		Execute[event](msg)
+	if type(event) ~= "string" or not Execute[event] then return end
+	if type(msg) ~= "string" or msg == "" then return end
+	if not self.player then
+		self.player = UnitName("player")
 	end
+	Execute[event](msg)
 end
 
 function DPSMate.Parser:GetUnitByName(target)

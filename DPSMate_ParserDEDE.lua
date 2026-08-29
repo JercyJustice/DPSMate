@@ -1,6 +1,6 @@
 DPSMateFile("DPSMate_ParserDEDE.lua")
 local t = {}
-local strgfind = string.gfind
+local strgfind = string.gfind or string.gmatch
 local DB = DPSMate.DB
 local tnbr = tonumber
 local strgsub = string.gsub

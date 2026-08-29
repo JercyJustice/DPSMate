@@ -22,7 +22,7 @@ function DPSMate.Modules.DPS:GetSortedTable(arr,k)
 	if arr then
 		for cat, val in pairs(arr) do
 			local name = DPSMate:GetUserById(cat)
-			if (not DPSMateUser[name][4] or (DPSMateUser[name][4] and not DPSMateSettings["mergepets"])) then
+			if name and DPSMateUser[name] and (not DPSMateUser[name][4] or (DPSMateUser[name][4] and not DPSMateSettings["mergepets"])) then
 				if DPSMate:ApplyFilter(k, name) then
 					local CV = val["i"]
 					if DPSMate:PlayerExist(DPSMateUser, DPSMateUser[name][5]) and arr[DPSMateUser[DPSMateUser[name][5]][1]] then

@@ -1,6 +1,6 @@
 DPSMateFile("DPSMate_ParserENUS.lua")
 local t = {}
-local strgfind = string.gfind
+local strgfind = string.gfind or string.gmatch
 local DB = DPSMate.DB
 local tnbr = tonumber
 local npcdb = DPSMate.NPCDB
@@ -41,6 +41,21 @@ function DPSMate.Parser:SelfHits(msg)
 		DB:DamageTaken(self.player, "Drowning", 1, 0, 0, 0, 0, 0, tnbr(a), "Environment", 0, 0)
 		DB:DeathHistory(self.player, "Environment", "Drowning", tnbr(a), 1, 0, 0, 0)
 		return
+	end
+	-- Emberveil: Combat-Log ohne schliessenden Punkt oder extra Suffix.
+	if string.match then
+		local verb, target, amount = string.match(msg, "^You (hit) (.+) for (%d+)")
+		if not verb then
+			verb, target, amount = string.match(msg, "^You (crit) (.+) for (%d+)")
+		end
+		if verb and target and amount then
+			local hit, crit = 0, 1
+			if verb == "hit" then hit, crit = 1, 0 end
+			amount = tnbr(amount)
+			DB:EnemyDamage(true, DPSMateEDT, self.player, "AutoAttack", hit, crit, 0, 0, 0, 0, amount, target, 0, 0)
+			DB:DamageDone(self.player, "AutoAttack", hit, crit, 0, 0, 0, 0, amount, 0, 0)
+			return
+		end
 	end
 end
 
@@ -101,6 +116,20 @@ function DPSMate.Parser:SelfSpellDMG(msg)
 	for a,b in strgfind(msg, "Your (.+) is absorbed by (.+)%.") do
 		DB:Absorb(a, b, self.player)
 		return
+	end
+	if string.match then
+		local spell, verb, target, amount = string.match(msg, "^Your (.+) (hits) (.+) for (%d+)")
+		if not spell then
+			spell, verb, target, amount = string.match(msg, "^Your (.+) (crits) (.+) for (%d+)")
+		end
+		if spell and target and amount then
+			local hit, crit = 0, 1
+			if verb == "hits" then hit, crit = 1, 0 end
+			amount = tnbr(amount)
+			DB:EnemyDamage(true, DPSMateEDT, self.player, spell, hit, crit, 0, 0, 0, 0, amount, target, 0, 0)
+			DB:DamageDone(self.player, spell, hit, crit, 0, 0, 0, 0, amount, 0, 0)
+			return
+		end
 	end
 end
 

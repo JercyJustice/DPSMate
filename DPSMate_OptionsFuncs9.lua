@@ -159,23 +159,21 @@ function DPSMate.Options:CancelColor()
 end
 
 function DPSMate.Options:OpenColorPicker(obj, var, func)
-	CloseMenus()
-	
+	if CloseMenus then CloseMenus() end
+	if DPSMate_OpenColorPicker then
+		DPSMate_OpenColorPicker(obj, var, func)
+		return
+	end
 	button = _G(obj:GetName().."_SwatchBg")
-	
 	ColorPickerFrame.obj = obj
 	ColorPickerFrame.var = var
 	ColorPickerFrame.rfunc = func
-	
 	ColorPickerFrame.func = DPSMate.Options.SetColor
 	ColorPickerFrame:SetColorRGB(button.r, button.g, button.b)
 	ColorPickerFrame.previousValues = {r = button.r, g = button.g, b = button.b, opacity = button.opacity}
 	ColorPickerFrame.cancelFunc = DPSMate.Options.CancelColor
-
 	ColorPickerFrame:SetPoint("TOPLEFT", obj, "TOPRIGHT", 0, 0)
-	
 	ColorPickerFrame:SetFrameStrata("TOOLTIP")
-	
 	ColorPickerFrame:Show()
 end
 

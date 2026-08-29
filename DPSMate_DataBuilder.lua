@@ -689,6 +689,11 @@ function DPSMate.DB:OnEvent(event)
 		self:PlayerTargetChanged()
 	elseif event == "PLAYER_PET_CHANGED" then
 		DPSMate.DB:OnGroupUpdate()
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		if DPSMate.Parser and DPSMate.Parser.GetPlayerValues then
+			pcall(function() DPSMate.Parser:GetPlayerValues() end)
+		end
+		self:OnGroupUpdate()
 	end
 end
 
@@ -2572,7 +2577,11 @@ do
 		if DPSMate and DPSMate.DB and DPSMate.DB.OnEvent and not DPSMate.DB.loaded then
 			pcall(function() DPSMate.DB:OnEvent("ADDON_LOADED") end)
 		end
+		if DPSMate_BindCombatEvents then pcall(DPSMate_BindCombatEvents) end
 		if DPSMate and DPSMate.Enable then pcall(function() DPSMate:Enable() end) end
+		if DPSMate and DPSMate.Parser and DPSMate.Parser.GetPlayerValues then
+			pcall(function() DPSMate.Parser:GetPlayerValues() end)
+		end
 		if DPSMate_ScheduleMiniMapRestore then DPSMate_ScheduleMiniMapRestore() end
 	end)
 end

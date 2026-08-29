@@ -114,7 +114,7 @@ DPSMate.Events = {
 	
 	"PLAYER_AURAS_CHANGED",
 }
-DPSMate.Registered = true
+DPSMate.Registered = false
 DPSMate.RegistredModules = {}
 DPSMate.ModuleNames = {}
 local function EchoTranslation(_, s) return s end
@@ -1084,15 +1084,16 @@ function DPSMate:HideStatusBars()
 end
 
 function DPSMate:EventHolder()
-	if DPSMate_Options then return DPSMate_Options end
 	if DPSMateEventFrame then return DPSMateEventFrame end
+	if DPSMate_Options then
+		DPSMateEventFrame = DPSMate_Options
+		return DPSMateEventFrame
+	end
 	local f = CreateFrame("Frame", "DPSMateEventFrame", UIParent)
 	f:SetScript("OnEvent", function(self, ev, msg)
-		ev = ev or event
-		msg = msg or arg1
-		if DPSMate.DB and DPSMate.DB.OnEvent then pcall(DPSMate.DB.OnEvent, DPSMate.DB, ev) end
-		if DPSMate.Parser and DPSMate.Parser.OnEvent then pcall(DPSMate.Parser.OnEvent, DPSMate.Parser, ev, msg) end
-		if DPSMate.Options and DPSMate.Options.OnEvent then pcall(DPSMate.Options.OnEvent, DPSMate.Options, ev) end
+		if DPSMate_OnCombatEvent then
+			DPSMate_OnCombatEvent(self, ev, msg)
+		end
 	end)
 	DPSMateEventFrame = f
 	return f

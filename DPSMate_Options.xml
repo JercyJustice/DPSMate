@@ -110,23 +110,13 @@
 				</Anchors>
 				<Scripts>
 					<OnClick>
-						for cat, val in pairs(DPSMateSettings["windows"]) do
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat).."Expand"):Show()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat).."Collapse"):Hide()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat).."_Button1"):Hide()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat).."_Button2"):Hide()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat).."_Button3"):Hide()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat)).after:ClearAllPoints()
-							getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat)).after:SetPoint("TOP", getglobal("DPSMate_ConfigMenu_Menu_Button"..(9+cat)), "BOTTOM")
-						end
 						this:Hide()
 						getglobal(this:GetParent():GetName().."Collapse"):Show()
 						getglobal(this:GetParent():GetName().."_Button1"):Show()
 						getglobal(this:GetParent():GetName().."_Button2"):Show()
 						getglobal(this:GetParent():GetName().."_Button3"):Show()
-						this:GetParent().after:ClearAllPoints()
-						this:GetParent().after:SetPoint("TOP", this:GetParent(), "BOTTOM", 0, -42)
 						DPSMate_ConfigMenu_Menu.Key = this:GetParent().Key
+						if DPSMate_RelayoutWindowMenu then DPSMate_RelayoutWindowMenu() end
 					</OnClick>
 				</Scripts>
 				<NormalTexture file="Interface\AddOns\DPSMate\images\UI-Panel-ExpandButton-Up" />
@@ -147,8 +137,7 @@
 						getglobal(this:GetParent():GetName().."_Button1"):Hide()
 						getglobal(this:GetParent():GetName().."_Button2"):Hide()
 						getglobal(this:GetParent():GetName().."_Button3"):Hide()
-						this:GetParent().after:ClearAllPoints()
-						this:GetParent().after:SetPoint("TOP", this:GetParent(), "BOTTOM")
+						if DPSMate_RelayoutWindowMenu then DPSMate_RelayoutWindowMenu() end
 					</OnClick>
 				</Scripts>
 				<NormalTexture file="Interface\AddOns\DPSMate\images\UI-Panel-CollapseButton-Up" />
@@ -210,17 +199,17 @@
 							getglobal(this:GetParent():GetParent():GetParent():GetName().."_Tab_TitleBar"):Show()
 							this:GetParent():GetParent().selected = "_Tab_TitleBar"
 							this:GetParent():GetParent().Key = this:GetParent().Key
-							DPSMate_ConfigMenu_Tab_TitleBar_Enable:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebar"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Enable, DPSMateSettings["windows"][this:GetParent().Key]["titlebar"])
 							DPSMate_ConfigMenu_Tab_TitleBar_BarFontSize:SetValue(DPSMateSettings["windows"][this:GetParent().Key]["titlebarfontsize"])
 							DPSMate_ConfigMenu_Tab_TitleBar_BarHeight:SetValue(DPSMateSettings["windows"][this:GetParent().Key]["titlebarheight"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Report:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarreport"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Reset:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarreset"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Mode:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarsegments"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Config:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarconfig"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Sync:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarsync"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Enable:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarenable"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_Filter:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["titlebarfilter"])
-							DPSMate_ConfigMenu_Tab_TitleBar_Box1_CBTDisplay:SetChecked(DPSMateSettings["windows"][this:GetParent().Key]["cbtdisplay"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Report, DPSMateSettings["windows"][this:GetParent().Key]["titlebarreport"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Reset, DPSMateSettings["windows"][this:GetParent().Key]["titlebarreset"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Mode, DPSMateSettings["windows"][this:GetParent().Key]["titlebarsegments"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Config, DPSMateSettings["windows"][this:GetParent().Key]["titlebarconfig"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Sync, DPSMateSettings["windows"][this:GetParent().Key]["titlebarsync"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Enable, DPSMateSettings["windows"][this:GetParent().Key]["titlebarenable"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_Filter, DPSMateSettings["windows"][this:GetParent().Key]["titlebarfilter"])
+							DPSMate_SetChecked(DPSMate_ConfigMenu_Tab_TitleBar_Box1_CBTDisplay, DPSMateSettings["windows"][this:GetParent().Key]["cbtdisplay"])
 							DPSMate_ConfigMenu_Tab_TitleBar_BGColorNormalTexture:SetVertexColor(DPSMateSettings["windows"][this:GetParent().Key]["titlebarbgcolor"][1], DPSMateSettings["windows"][this:GetParent().Key]["titlebarbgcolor"][2], DPSMateSettings["windows"][this:GetParent().Key]["titlebarbgcolor"][3])
 							DPSMate_ConfigMenu_Tab_TitleBar_BGColor_SwatchBg.r = DPSMateSettings["windows"][this:GetParent().Key]["titlebarbgcolor"][1]
 							DPSMate_ConfigMenu_Tab_TitleBar_BGColor_SwatchBg.g = DPSMateSettings["windows"][this:GetParent().Key]["titlebarbgcolor"][2]
@@ -340,6 +329,11 @@
 	</EditBox>
 	<CheckButton name="DPSMate_Template_CheckButton" inherits="UICheckButtonTemplate" virtual="true">
 		<Size x="20" y="20" />
+		<NormalTexture file="Interface\Buttons\UI-CheckBox-Up"/>
+		<PushedTexture file="Interface\Buttons\UI-CheckBox-Down"/>
+		<HighlightTexture file="Interface\Buttons\UI-CheckBox-Highlight" alphaMode="ADD"/>
+		<CheckedTexture file="Interface\Buttons\UI-CheckBox-Check"/>
+		<DisabledCheckedTexture file="Interface\Buttons\UI-CheckBox-Check-Disabled"/>
 		<Layers>
 			<Layer level="ARTWORK">
 				<FontString name="$parent_Title" inherits="GameFontNormalSmall" justifyH="LEFT" justifyV="CENTER">
@@ -2179,13 +2173,7 @@
 								end
 							</OnLoad>
 							<OnClick>
-								if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebar"] then
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebar"] = false
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head"):Hide()
-								else
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebar"] = true
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head"):Show()
-								end
+								DPSMate_OnTitleBarEnableClick()
 							</OnClick>
 						</Scripts>
 					</CheckButton>
@@ -2402,12 +2390,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreport"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreport"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreport"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarreport")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2424,12 +2407,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsegments"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsegments"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsegments"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarsegments")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2448,12 +2426,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreset"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreset"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarreset"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarreset")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2472,12 +2445,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarconfig"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarconfig"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarconfig"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarconfig")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2496,12 +2464,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsync"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsync"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarsync"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarsync")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2520,12 +2483,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarenable"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarenable"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarenable"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarenable")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2542,12 +2500,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfilter"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfilter"] = false
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfilter"] = true
-										end
-										DPSMate.Options:ToggleTitleBarButtonState()
+										DPSMate_OnTitleBarButtonClick("titlebarfilter")
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -2566,13 +2519,7 @@
 										end
 									</OnLoad>
 									<OnClick>
-										if DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["cbtdisplay"] then
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["cbtdisplay"] = false
-											DPSMate:SetStatusBarValue()
-										else
-											DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["cbtdisplay"] = true
-											getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Font"):SetText(DPSMate.Options.Options[1]["args"][DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["CurMode"]].name)
-										end
+										DPSMate_OnCbtDisplayClick()
 									</OnClick>
 								</Scripts>
 							</CheckButton>
@@ -6918,9 +6865,9 @@
 				end
 			</OnLoad>
 			<OnEvent>
-				if DPSMate.DB and DPSMate.DB.OnEvent then DPSMate.DB:OnEvent(event) end
-				if DPSMate.Parser and DPSMate.Parser.OnEvent then DPSMate.Parser:OnEvent(event, arg1) end
-				if DPSMate.Options and DPSMate.Options.OnEvent then DPSMate.Options:OnEvent(event) end
+				if DPSMate_OnCombatEvent then
+					DPSMate_OnCombatEvent(event, arg1)
+				end
 			</OnEvent>
 		</Scripts>
 	</Frame>
