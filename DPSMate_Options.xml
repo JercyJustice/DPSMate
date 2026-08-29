@@ -285,6 +285,11 @@
 	<Button name="DPSMate_Template_Button" inherits="UIPanelButtonTemplate" virtual="true">
 		<Size x="80" y="28" />
 		<Scripts>
+			<OnLoad>
+				if this and DPSMate_StylePanelButton then
+					DPSMate_StylePanelButton(this)
+				end
+			</OnLoad>
 			<OnEnter>
 				if this then
 					GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
@@ -404,8 +409,7 @@
 				GameTooltip:Hide()
 			</OnLeave>
 			<OnValueChanged>
-				getglobal(this:GetName().."_Editbox"):SetText(string.format("%.1f", this:GetValue()))
-				if this.func and DPSMate.DB.loaded then this.func() end
+				DPSMate_OnConfigSliderChanged(this)
 			</OnValueChanged>
 		</Scripts>
 		<Frames>
@@ -1284,28 +1288,17 @@
 			<Button name="$parent_ReportButton" inherits="UIPanelButtonTemplate">
 				<Size x="160" y="26" />
 				<Anchors>
-					<Anchor point="BOTTOM" />
+					<Anchor point="BOTTOM">
+						<Offset x="0" y="8" />
+					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
 					<OnClick>
 						DPSMate.Options:Report()
 					</OnClick>
 					<OnLoad>
-						if this then
-							getglobal(this:GetName().."Text"):SetText(DPSMate.L["report"])
-					
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["report"])
 						end
 					</OnLoad>
 				</Scripts>
@@ -1653,7 +1646,7 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["submitTooltip"]
-									getglobal(this:GetName().."Text"):SetText(DPSMate.L["submit"])
+									if DPSMate_StylePanelButton then DPSMate_StylePanelButton(this, DPSMate.L["submit"]) end
 							
 								end
 							</OnLoad>
@@ -1692,7 +1685,7 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["removeTooltip"]
-									getglobal(this:GetName().."Text"):SetText(DPSMate.L["remove"])
+									if DPSMate_StylePanelButton then DPSMate_StylePanelButton(this, DPSMate.L["remove"]) end
 							
 								end
 							</OnLoad>
@@ -1750,7 +1743,7 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["copyTooltip"]
-									getglobal(this:GetName().."Text"):SetText(DPSMate.L["copy"])
+									if DPSMate_StylePanelButton then DPSMate_StylePanelButton(this, DPSMate.L["copy"]) end
 							
 								end
 							</OnLoad>
@@ -1842,14 +1835,8 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["barfontsizeTooltip"]
-									this.func = function() 
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontsize"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_Total_Name"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfont"]], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontflag"]])
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_Total_Value"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfont"]], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontflag"]])
-									for i=1, 40 do
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_StatusBar"..i.."_Name"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfont"]], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontflag"]])
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_StatusBar"..i.."_Value"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfont"]], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontflag"]])
-									end
+									this.func = function()
+									DPSMate_OnBarFontSizeSlider()
 									end
 									this:SetMinMaxValues(1,32)
 									this:SetValueStep(1)
@@ -1992,9 +1979,8 @@
 									this.aide = DPSMate.L["fontcolorTooltip"]
 									this.var = "barfontcolor"
 									this.func = function()
-									for i=1, 40 do
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_StatusBar"..i.."_Name"):SetTextColor(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][1], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][2], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][3])
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Child_StatusBar"..i.."_Value"):SetTextColor(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][1], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][2], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["barfontcolor"][3])
+									if DPSMate_ApplyWindowFonts then
+									DPSMate_ApplyWindowFonts(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key])
 									end
 									end
 							
@@ -2207,9 +2193,8 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["barfontsizeTooltip"]
-									this.func = function() 
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontsize"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Font"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfont"]], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontflag"]])
+									this.func = function()
+									DPSMate_OnTitleBarFontSizeSlider()
 									end
 									this:SetMinMaxValues(1,32)
 									this:SetValueStep(1)
@@ -2296,8 +2281,7 @@
 								if this then
 									this.aide = DPSMate.L["bgOpacityTooltip"]
 									this.func = function()
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebaropacity"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Background"):SetAlpha(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebaropacity"])
+									DPSMate_OnWindowAlphaSlider("titlebaropacity")
 									end
 									this:SetMinMaxValues(0,1)
 									this:SetValueStep(0.1)
@@ -2348,7 +2332,9 @@
 									this.aide = DPSMate.L["fontcolorTooltip"]
 									this.var = "titlebarfontcolor"
 									this.func = function()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Font"):SetTextColor(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontcolor"][1], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontcolor"][2], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontcolor"][3])
+									if DPSMate_ApplyWindowFonts then
+									DPSMate_ApplyWindowFonts(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key])
+									end
 									end
 							
 								end
@@ -2594,9 +2580,8 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["opacityTooltip"]
-									this.func = function() 
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["opacity"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"]):SetAlpha(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["opacity"])
+									this.func = function()
+									DPSMate_OnWindowAlphaSlider("opacity")
 									end
 									this:SetMinMaxValues(0.0,1.0)
 									this:SetValueStep(0.1)
@@ -2618,9 +2603,8 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["bgOpacityTooltip"]
-									this.func = function() 
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["bgopacity"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_ScrollFrame_Background"):SetAlpha(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["bgopacity"])
+									this.func = function()
+									DPSMate_OnWindowAlphaSlider("bgopacity")
 									end
 									this:SetMinMaxValues(0.0,1.0)
 									this:SetValueStep(0.1)
@@ -2642,9 +2626,8 @@
 							<OnLoad>
 								if this then
 									this.aide = DPSMate.L["borderOpacityTooltip"]
-									this.func = function() 
-									DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["borderopacity"] = this:GetValue()
-									getglobal("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Border"):SetAlpha(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["borderopacity"])
+									this.func = function()
+									DPSMate_OnWindowAlphaSlider("borderopacity")
 									end
 									this:SetMinMaxValues(0.0,1.0)
 									this:SetValueStep(0.1)

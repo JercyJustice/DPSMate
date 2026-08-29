@@ -142,16 +142,16 @@ function DPSMate.DB:OnEvent(event)
 						titlebarreport = true,
 						titlebarreset = true,
 						titlebarsegments = true,
-						titlebarconfig = true,
-						titlebarsync = true,
-						titlebarenable = true,
+						titlebarconfig = false,
+						titlebarsync = false,
+						titlebarenable = false,
 						titlebarfilter = true,
 						titlebartexture = "Healbot",
-						titlebarbgcolor = {0.01568627450980392,0,1},
+						titlebarbgcolor = {0,0,0},
 						titlebarfontcolor = {1.0,0.82,0.0},
 						barfontcolor = {1.0,1.0,1.0},
 						contentbgtexture = "UI-Tooltip-Background",
-						contentbgcolor = {0.01568627450980392,0,1},
+						contentbgcolor = {0,0,0},
 						bgbarcolor = {1,1,1},
 						numberformat = 1,
 						opacity = 1,
@@ -190,7 +190,7 @@ function DPSMate.DB:OnEvent(event)
 				dataresetssync = 3,
 				dataresetslogout = 3,
 				showminimapbutton = true,
-				showtotals = true,
+				showtotals = false,
 				hidewhensolo = false,
 				hideincombat = false,
 				hideinpvp = false,
@@ -707,26 +707,28 @@ function DPSMate.DB:OnGroupUpdate()
 	end
 	for i=1, num do
 		local name = UnitName(type..i)
+		if name and name ~= "" then
 		local pet = UnitName(type.."pet"..i)
 		local _,classEng = UnitClass(type..i)
 		local fac = UnitFactionGroup(type..i)
 		local gname, _, _ = GetGuildInfo(type..i)
 		local level = UL(type..i)
 		self:BuildUser(name, strlower(classEng or ""))
-		self:BuildUser(pet)
+		if pet then self:BuildUser(pet) end
+		if DPSMateUser[name] then
 		if classEng then
 			DPSMateUser[name][2] = strlower(classEng)
 		end
 		DPSMateUser[name][4] = false
-		if pet and pet ~= DPSMate.L["unknown"] then
+		if pet and pet ~= DPSMate.L["unknown"] and DPSMateUser[pet] then
 			DPSMateUser[pet][4] = true
 			DPSMateUser[pet][6] = DPSMateUser[name][1]
-			-- SuperWoW combat log uses "PetName (OwnerName)" – register both
 			local swPet = pet.." ("..name..")"
 			self:BuildUser(swPet, nil)
-			DPSMateUser[swPet][4] = true
-			DPSMateUser[swPet][6] = DPSMateUser[name][1]
-			-- Prefer SuperWoW name when SuperWoW is present (SetAutoloot API)
+			if DPSMateUser[swPet] then
+				DPSMateUser[swPet][4] = true
+				DPSMateUser[swPet][6] = DPSMateUser[name][1]
+			end
 			if SetAutoloot then
 				DPSMateUser[name][5] = swPet
 			else
@@ -747,27 +749,35 @@ function DPSMate.DB:OnGroupUpdate()
 		if level and level>0 then
 			DPSMateUser[name][8] = level
 		end
+		end
+		end
 	end
 	local pet = UnitName("pet")
 	local name = UnitName("player")
-	if pet and pet ~= DPSMate.L["unknown"] then
-		self:BuildUser(name, nil)
-		self:BuildUser(pet, nil)
-		DPSMateUser[pet][4] = true
-		DPSMateUser[pet][6] = DPSMateUser[name][1]
-		local swPet = pet.." ("..name..")"
-		self:BuildUser(swPet, nil)
-		DPSMateUser[swPet][4] = true
-		DPSMateUser[swPet][6] = DPSMateUser[name][1]
-		if SetAutoloot then
-			DPSMateUser[name][5] = swPet
-		else
-			DPSMateUser[name][5] = pet
+	if name then
+		DPSMate.Parser.TargetParty[name] = "player"
+		if pet and pet ~= DPSMate.L["unknown"] then
+			self:BuildUser(name, nil)
+			self:BuildUser(pet, nil)
+			if DPSMateUser[pet] and DPSMateUser[name] then
+				DPSMateUser[pet][4] = true
+				DPSMateUser[pet][6] = DPSMateUser[name][1]
+				local swPet = pet.." ("..name..")"
+				self:BuildUser(swPet, nil)
+				if DPSMateUser[swPet] then
+					DPSMateUser[swPet][4] = true
+					DPSMateUser[swPet][6] = DPSMateUser[name][1]
+				end
+				if SetAutoloot then
+					DPSMateUser[name][5] = swPet
+				else
+					DPSMateUser[name][5] = pet
+				end
+				DPSMate.Parser.TargetParty[pet] = "pet"
+				DPSMate.Parser.TargetParty[swPet] = "pet"
+			end
 		end
-		DPSMate.Parser.TargetParty[pet] = "pet"
-		DPSMate.Parser.TargetParty[swPet] = "pet"
 	end
-	DPSMate.Parser.TargetParty[name] = "player"
 end
 
 -- Deprecated

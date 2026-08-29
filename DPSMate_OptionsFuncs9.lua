@@ -96,13 +96,15 @@ function DPSMate.Options:ToggleTitleBarButtonState()
 		local parent, i = _G("DPSMate_"..val["name"].."_Head"), 0
 		for _, name in pairs(buttons) do
 			local button = _G("DPSMate_"..val["name"].."_Head_"..name)
-			if val["titlebar"..strlower(name)] then
-				button:ClearAllPoints()
-				button:SetPoint("RIGHT", parent, "RIGHT", -i*15-2, 0)
-				button:Show()
-				i=i+1
-			else
-				button:Hide()
+			if button then
+				if val["titlebar"..strlower(name)] then
+					button:ClearAllPoints()
+					button:SetPoint("RIGHT", parent, "RIGHT", -i*15-2, 0)
+					button:Show()
+					i=i+1
+				else
+					button:Hide()
+				end
 			end
 		end
 	end

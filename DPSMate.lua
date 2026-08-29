@@ -215,28 +215,68 @@ function DPSMate:SlashCMDHandler(msg)
 
 -- Inhalt an die Fenstergroesse anpassen. Wird aus OnSizeChanged und nach dem
 -- Ziehen am Resize-Griff aufgerufen; OnSizeChanged allein reicht hier nicht.
--- Name und Wert eines Balkens ausrichten. Im XML spannen sich beide ueber zwei
--- Anker ueber die volle Balkenbreite (justifyH LEFT bzw. RIGHT). Das zieht auf
--- diesem Client nicht, dadurch fallen beide auf ihre Textbreite zusammen und
--- liegen links uebereinander. Also Breite explizit setzen.
+-- Breite nicht per SetWidth (wird hier oft ignoriert, XML-200px bleibt,
+-- Text sitzt dann in der Mitte). Stattdessen zwei Anker an einer Kante.
+local function DPSMate_TextWidth(fs, maxW)
+	local text = ""
+	if fs and fs.GetText then text = fs:GetText() or "" end
+	local n = string.len(text)
+	if n < 1 then n = 8 end
+	local tw = n * 9 + 24
+	if maxW and maxW > 0 and tw > maxW then tw = maxW end
+	if tw < 24 then tw = 24 end
+	return tw
+end
+
+local function DPSMate_PlaceLeft(fs, parent, x, maxW)
+	if not fs or not parent then return end
+	if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(false) end
+	local tw = DPSMate_TextWidth(fs, maxW)
+	fs:ClearAllPoints()
+	fs:SetPoint("TOPLEFT", parent, "TOPLEFT", x, 0)
+	fs:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", x + tw, -16)
+end
+
+local function DPSMate_PlaceRight(fs, parent, x, maxW)
+	if not fs or not parent then return end
+	if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(false) end
+	local tw = DPSMate_TextWidth(fs, maxW)
+	fs:ClearAllPoints()
+	fs:SetPoint("TOPRIGHT", parent, "TOPRIGHT", x, 0)
+	fs:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", x, 0)
+	fs:SetPoint("LEFT", parent, "RIGHT", x - tw, 0)
+	if fs.SetWidth then fs:SetWidth(tw) end
+end
+
 function DPSMate:LayoutBarText(bar, width, indent)
 	if not bar then return end
+	indent = indent or 2
+	local inner = (width or 120) - indent
+	if inner < 40 then inner = 40 end
 	local name = bar.name or _G(bar:GetName().."_Name")
 	local value = bar.value or _G(bar:GetName().."_Value")
-	local inner = width - indent
-	if inner < 1 then inner = 1 end
 	if name then
-		name:ClearAllPoints()
-		name:SetPoint("LEFT", bar, "LEFT", indent, 0)
-		name:SetWidth(inner)
-		if name.SetJustifyH then name:SetJustifyH("LEFT") end
+		if name.SetDrawLayer then name:SetDrawLayer("OVERLAY") end
+		DPSMate_PlaceLeft(name, bar, indent, inner)
 	end
 	if value then
-		value:ClearAllPoints()
-		value:SetPoint("RIGHT", bar, "RIGHT", -3, 0)
-		value:SetWidth(inner)
-		if value.SetJustifyH then value:SetJustifyH("RIGHT") end
+		if value.SetDrawLayer then value:SetDrawLayer("OVERLAY") end
+		DPSMate_PlaceRight(value, bar, -4, inner)
 	end
+end
+
+function DPSMate:LayoutHeadTitle(frame, w, top, nButtons)
+	if not frame or not frame.GetName then return end
+	local n = frame:GetName()
+	local head = _G(n.."_Head")
+	local hfont = _G(n.."_Head_Font")
+	if not head or not hfont then return end
+	if type(w) ~= "number" then w = frame:GetWidth() or 150 end
+	if type(nButtons) ~= "number" then nButtons = 3 end
+	local maxW = w - (nButtons * 15 + 8)
+	if maxW < 48 then maxW = 48 end
+	if hfont.SetDrawLayer then hfont:SetDrawLayer("ARTWORK") end
+	DPSMate_PlaceLeft(hfont, head, 4, maxW)
 end
 
 
@@ -291,6 +331,7 @@ function DPSMate:UpdateFrameSize(frame)
 				end
 			end
 		end
+		DPSMate:LayoutHeadTitle(frame, w, top, i)
 	end
 
 	local sf = _G(n.."_ScrollFrame")
@@ -516,7 +557,6 @@ function DPSMate:InitializeFrames()
 		end
 		
 		if frame.fborder then
-			frame.fborder:SetAlpha(val["borderopacity"] or 0)
 			if frame.fborder.SetFrameStrata and DPSMate.Options.stratas then
 				frame.fborder:SetFrameStrata(DPSMate.Options.stratas[val["borderstrata"] or 1])
 			end
@@ -527,9 +567,6 @@ function DPSMate:InitializeFrames()
 					tile = true, tileSize = 12, edgeSize = 10,
 					insets = { left = 5, right = 5, top = 3, bottom = 1 }
 				})
-			end
-			if frame.fborder.SetBackdropBorderColor and val["contentbordercolor"] then
-				frame.fborder:SetBackdropBorderColor(val["contentbordercolor"][1], val["contentbordercolor"][2], val["contentbordercolor"][3])
 			end
 		end
 		
@@ -557,12 +594,8 @@ function DPSMate:InitializeFrames()
 		if not val["titlebar"] then
 			head:Hide()
 		end
-		frame:SetAlpha(val["opacity"])
-		if head.font and val["titlebarfontcolor"] then
-			head.font:SetTextColor(val["titlebarfontcolor"][1],val["titlebarfontcolor"][2],val["titlebarfontcolor"][3])
-			if DPSMate.Options.fonts and DPSMate.Options.fontflags then
-				head.font:SetFont(DPSMate.Options.fonts[val["titlebarfont"]], val["titlebarfontsize"], DPSMate.Options.fontflags[val["titlebarfontflag"]])
-			end
+		if head.font and val["titlebarfontcolor"] and head.font.SetVertexColor then
+			head.font:SetVertexColor(val["titlebarfontcolor"][1],val["titlebarfontcolor"][2],val["titlebarfontcolor"][3])
 		end
 		if head.bg then
 			head.bg:SetTexture(DPSMate.Options.statusbars[val["titlebartexture"]])
@@ -571,7 +604,8 @@ function DPSMate:InitializeFrames()
 			end
 			head.bg:SetAlpha(val["titlebaropacity"] or 1)
 		end
-		head:SetHeight(val["titlebarheight"])
+		if val["titlebarheight"] then head:SetHeight(val["titlebarheight"]) end
+		DPSMate:UpdateFrameSize(frame)
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Background"):SetTexture(DPSMate.Options.bgtexture[val["contentbgtexture"]])
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Background"):SetVertexColor(val["contentbgcolor"][1], val["contentbgcolor"][2], val["contentbgcolor"][3])
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Background"):SetAlpha(val["bgopacity"] or 1)
@@ -598,8 +632,6 @@ function DPSMate:InitializeFrames()
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"):SetStatusBarTexture(DPSMate.Options.statusbars[val["bartexture"]])
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"):SetStatusBarColor(1,1,1,val["totopacity"] or 1)
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total_BG"):SetTexture(DPSMate.Options.statusbars[val["bartexture"]])
-		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total_Name"):SetFont(DPSMate.Options.fonts[val["barfont"]], val["barfontsize"], DPSMate.Options.fontflags[val["barfontflag"]])
-		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total_Value"):SetFont(DPSMate.Options.fonts[val["barfont"]], val["barfontsize"], DPSMate.Options.fontflags[val["barfontflag"]])
 		DPSMate:LayoutBarText(_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"), child:GetWidth(), 2)
 		for i=1, 40 do
 			local bar = _G("DPSMate_"..val["name"].."_ScrollFrame_Child_StatusBar"..i)
@@ -639,23 +671,12 @@ function DPSMate:InitializeFrames()
 			elseif bar.icon then
 				bar.icon:Hide()
 			end
-			-- Zwei-Anker-Aufspannen greift hier nicht, deshalb ueber SetWidth
+			bar:SetHeight(val["barheight"])
 			DPSMate:LayoutBarText(bar, child:GetWidth(), indent)
-		
-			-- Styles
-			if bar.name then
-				bar.name:SetFont(DPSMate.Options.fonts[val["barfont"]], val["barfontsize"], DPSMate.Options.fontflags[val["barfontflag"]])
-				bar.name:SetTextColor(val["barfontcolor"][1],val["barfontcolor"][2],val["barfontcolor"][3])
-			end
-			if bar.value then
-				bar.value:SetFont(DPSMate.Options.fonts[val["barfont"]], val["barfontsize"], DPSMate.Options.fontflags[val["barfontflag"]])
-				bar.value:SetTextColor(val["barfontcolor"][1],val["barfontcolor"][2],val["barfontcolor"][3])
-			end
 			bar:SetStatusBarTexture(DPSMate.Options.statusbars[val["bartexture"]])
 			if bar.bg then
 				bar.bg:SetTexture(DPSMate.Options.statusbars[val["bartexture"]])
 			end
-			bar:SetHeight(val["barheight"])
 			if bar.bg and val["bgbarcolor"] then
 				if val["barbg"] then
 					bar.bg:SetVertexColor(val["bgbarcolor"][1],val["bgbarcolor"][2],val["bgbarcolor"][3], 0)
@@ -664,6 +685,9 @@ function DPSMate:InitializeFrames()
 				end
 			end
 		end
+		if DPSMate_RepairWindowSettings then DPSMate_RepairWindowSettings(val) end
+		if DPSMate_ApplyWindowFonts then DPSMate_ApplyWindowFonts(val) end
+		if DPSMate_ApplyWindowAlphas then DPSMate_ApplyWindowAlphas(val) end
 		DPSMate.Options:SelectRealtime(frame, val["realtime"])
 		end
 		end
@@ -671,6 +695,10 @@ function DPSMate:InitializeFrames()
 	-- frisch aufgebaute Balken sind sichtbar; erst leeren
 	DPSMate:HideStatusBars()
 	DPSMate.Options:ToggleTitleBarButtonState()
+	for k, val in pairs(DPSMateSettings["windows"]) do
+		local fr = _G("DPSMate_"..val["name"])
+		if fr then DPSMate:UpdateFrameSize(fr) end
+	end
 	DPSMate:ApplyWindowVisibility()
 	DPSMate.Options:HideWhenSolo()
 	if not DPSMateSettings["enable"] then
@@ -864,6 +892,12 @@ function DPSMate:SetStatusBarValue()
 			local tv = _G(prefix.."_ScrollFrame_Child_Total_Value")
 			if tn then tn:SetText(self.L["total"]) end
 			if tv then tv:SetText((strt[1] or "")..(strt[2] or "")) end
+			local totalBar = _G(prefix.."_ScrollFrame_Child_Total")
+			local child = _G(prefix.."_ScrollFrame_Child")
+			if totalBar then
+				local bw = child and child.GetWidth and child:GetWidth() or totalBar:GetWidth()
+				DPSMate:LayoutBarText(totalBar, bw, 2)
+			end
 		end
 		if not c["cbtdisplay"] then
 			local hf = _G(prefix.."_Head_Font")
@@ -875,6 +909,8 @@ function DPSMate:SetStatusBarValue()
 					tstr = DPSMate.Options:FormatTime(cbt) or ""
 				end
 				hf:SetText(tostring(modeName).." ["..tstr.."]")
+				local fr = _G(prefix)
+				if fr then DPSMate:LayoutHeadTitle(fr) end
 			end
 		end
 		local totalBar = _G(prefix.."_ScrollFrame_Child_Total")
@@ -882,8 +918,9 @@ function DPSMate:SetStatusBarValue()
 			if totalBar then
 				if DPSMateSettings["showtotals"] then totalBar:Show() else totalBar:Hide() end
 			end
+			local maxBars = self:MaxVisibleBars(c)
 			for i=1, 40 do
-				if (not user[i]) then break end
+				if (not user[i]) or i > maxBars then break end
 				local statusbar = _G(prefix.."_ScrollFrame_Child_StatusBar"..i)
 				local name = _G(prefix.."_ScrollFrame_Child_StatusBar"..i.."_Name")
 				local value = _G(prefix.."_ScrollFrame_Child_StatusBar"..i.."_Value")
@@ -901,6 +938,10 @@ function DPSMate:SetStatusBarValue()
 				statusbar:SetValue(perc[i])
 				statusbar.user = user[i]
 				statusbar:Show()
+				local bw = child and child.GetWidth and child:GetWidth() or statusbar:GetWidth()
+				local indent = 2
+				if c["classicons"] then indent = c["barheight"] or 19 end
+				DPSMate:LayoutBarText(statusbar, bw, indent)
 			end
 		else
 			if totalBar then totalBar:Hide() end
@@ -1072,6 +1113,21 @@ function DPSMate:GetModeName(k)
 			end
 		end
 	end
+end
+
+function DPSMate:MaxVisibleBars(c)
+	if type(c) ~= "table" or not c["name"] then return 40 end
+	local frame = _G("DPSMate_"..c["name"])
+	if not frame or not frame.GetHeight then return 40 end
+	local h = frame:GetHeight() or 100
+	local top = 0
+	if c["titlebar"] ~= false then top = c["titlebarheight"] or 16 end
+	local bh = (c["barheight"] or 19) + (c["barspacing"] or 1)
+	if bh < 1 then bh = 20 end
+	local n = math.floor((h - top - 2) / bh)
+	if n < 1 then n = 1 end
+	if n > 40 then n = 40 end
+	return n
 end
 
 function DPSMate:HideStatusBars()

@@ -80,9 +80,10 @@ function DPSMate.Options:TitleBarFontDropDown()
 	
 	local function on_click()
         UIDropDownMenu_SetSelectedValue(DPSMate_ConfigMenu_Tab_TitleBar_BarFont, this.value)
-		DPSMate_ConfigMenu_Tab_TitleBar_BarFontText:SetFont(DPSMate.Options.fonts[this.value], 12)
 		DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfont"] = this.value
-		_G("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Font"):SetFont(DPSMate.Options.fonts[this.value], DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontsize"], DPSMate.Options.fontflags[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontflag"]])
+		if DPSMate_ApplyWindowFonts then
+			DPSMate_ApplyWindowFonts(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key])
+		end
     end
 	
 	for name, path in pairs(DPSMate.Options.fonts) do
@@ -101,9 +102,10 @@ function DPSMate.Options:TitleBarFontFlagsDropDown()
 	
 	local function on_click()
         UIDropDownMenu_SetSelectedValue(DPSMate_ConfigMenu_Tab_TitleBar_BarFontFlag, this.value)
-		DPSMate_ConfigMenu_Tab_TitleBar_BarFontFlagText:SetFont(DPSMate.Options.fonts["FRIZQT"], 12, DPSMate.Options.fontflags[this.value])
 		DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfontflag"] = this.value
-		_G("DPSMate_"..DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["name"].."_Head_Font"):SetFont(DPSMate.Options.fonts[DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key]["titlebarfont"]], 12, DPSMate.Options.fontflags[this.value])
+		if DPSMate_ApplyWindowFonts then
+			DPSMate_ApplyWindowFonts(DPSMateSettings["windows"][DPSMate_ConfigMenu_Menu.Key])
+		end
     end
 	
 	for name, flag in pairs(DPSMate.Options.fontflags) do

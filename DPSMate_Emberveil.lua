@@ -128,6 +128,226 @@ function DPSMate_ApplyDialogColor(frame, alpha)
 	frame:SetBackdropColor(0.157, 0.08, 0.06, alpha)
 end
 
+-- UIPanelButtonTemplate kopiert hier oft weder Textur noch FontString.
+-- Button:SetText / SetFont / SetBackdrop sind dokumentiert.
+-- https://emberveil.org/wiki/lua/widgets/Button#settext
+function DPSMate_StylePanelButton(btn, caption)
+	if not btn then return end
+	local function hideTex(tex)
+		if tex and tex.Hide then tex:Hide() end
+	end
+	if btn.GetNormalTexture then hideTex(btn:GetNormalTexture()) end
+	if btn.GetPushedTexture then hideTex(btn:GetPushedTexture()) end
+	if btn.GetHighlightTexture then hideTex(btn:GetHighlightTexture()) end
+	if btn.SetBackdrop then
+		btn:SetBackdrop({
+			bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			tileSize = 8,
+			edgeSize = 12,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
+		})
+		if btn.SetBackdropColor then btn:SetBackdropColor(0.20, 0.10, 0.08, 1) end
+		if btn.SetBackdropBorderColor then btn:SetBackdropBorderColor(0.70, 0.55, 0.20, 1) end
+	end
+	if btn.SetFont then btn:SetFont("Fonts\\FRIZQT__.TTF", 12) end
+	if caption and btn.SetText then btn:SetText(caption) end
+	if btn.SetTextColor then btn:SetTextColor(1, 0.82, 0, 1) end
+	local fs = btn.GetFontString and btn:GetFontString()
+	if fs then
+		if fs.SetJustifyH then fs:SetJustifyH("CENTER") end
+		if fs.SetVertexColor then fs:SetVertexColor(1, 0.82, 0, 1) end
+	end
+	local named = btn.GetName and getglobal(btn:GetName().."Text")
+	if named and caption and named.SetText then
+		named:SetText(caption)
+		if named.SetVertexColor then named:SetVertexColor(1, 0.82, 0, 1) end
+	end
+end
+
+-- SetAlpha kopiert auf diesem Client nur auf Texturen/FontStrings DIESES
+-- Objekts, nicht auf Kind-Frames. Deshalb Baum + Backdrop-Alpha.
+-- https://emberveil.org/wiki/lua/widgets/UIObject#setalpha
+-- https://emberveil.org/wiki/lua/widgets/Frame#setbackdropbordercolor
+local function DPSMate_ApplyAlphaTree(obj, a)
+	if not obj then return end
+	if obj.SetAlpha then obj:SetAlpha(a) end
+	if obj.GetRegions then
+		local regs = { obj:GetRegions() }
+		local i
+		for i = 1, table.getn(regs) do
+			if regs[i] and regs[i].SetAlpha then regs[i]:SetAlpha(a) end
+		end
+	end
+	if obj.GetChildren then
+		local kids = { obj:GetChildren() }
+		local i
+		for i = 1, table.getn(kids) do
+			DPSMate_ApplyAlphaTree(kids[i], a)
+		end
+	end
+end
+
+function DPSMate_RepairWindowSettings(win)
+	if type(win) ~= "table" then return end
+	-- Slider-Fill hat OnValueChanged mit GetValue()=Min ausgeloest und
+	-- Opacity 0 / Fontsize 1 gespeichert. Einmalig zuruecksetzen.
+	if type(win["barfontsize"]) ~= "number" or win["barfontsize"] < 8 then
+		win["barfontsize"] = 14
+	end
+	if type(win["titlebarfontsize"]) ~= "number" or win["titlebarfontsize"] < 8 then
+		win["titlebarfontsize"] = 12
+	end
+	if win["titlebaropacity"] == 0 then win["titlebaropacity"] = 1 end
+	if win["bgopacity"] == 0 then win["bgopacity"] = 1 end
+	if win["opacity"] == 0 then win["opacity"] = 1 end
+end
+
+function DPSMate_ApplyWindowAlphas(win)
+	if type(win) ~= "table" or not win["name"] then return end
+	local o = win["opacity"]
+	if type(o) ~= "number" then o = 1 end
+	if o < 0 then o = 0 end
+	if o > 1 then o = 1 end
+	local name = win["name"]
+	local frame = getglobal("DPSMate_"..name)
+	if not frame then return end
+	DPSMate_ApplyAlphaTree(frame, o)
+	local function A(obj, a)
+		if obj and obj.SetAlpha then obj:SetAlpha(a) end
+	end
+	local tb = win["titlebaropacity"]
+	if type(tb) ~= "number" then tb = 1 end
+	A(getglobal("DPSMate_"..name.."_Head_Background"), tb * o)
+	local bg = win["bgopacity"]
+	if type(bg) ~= "number" then bg = 1 end
+	A(getglobal("DPSMate_"..name.."_ScrollFrame_Background"), bg * o)
+	local bo = win["borderopacity"]
+	if type(bo) ~= "number" then bo = 1 end
+	local border = getglobal("DPSMate_"..name.."_Border")
+	A(border, bo * o)
+	if border and border.SetBackdropBorderColor then
+		local c = win["contentbordercolor"]
+		if type(c) ~= "table" then c = { 0, 0, 0 } end
+		border:SetBackdropBorderColor(c[1], c[2], c[3], bo * o)
+	end
+end
+
+function DPSMate_OnWindowAlphaSlider(var)
+	local win = DPSMate_CurrentWindow()
+	if not win or not var then return end
+	local s = this
+	local v = s and s.GetValue and s:GetValue()
+	if type(v) ~= "number" then return end
+	win[var] = v
+	DPSMate_ApplyWindowAlphas(win)
+end
+
+-- FontString:SetFont tut hier nichts, solange ein Font-Objekt haengt
+-- (XML inherits="TextStatusBarText"). Groesse geht nur ueber CreateFont
+-- plus Font:SetFont plus FontString:SetFontObject. Flags werden ignoriert.
+-- https://emberveil.org/wiki/lua/widgets/FontString#setfont
+-- https://emberveil.org/wiki/lua/widgets/Font#setfont
+-- https://emberveil.org/wiki/lua/globals/Frame#createfont
+local function DPSMate_FontKey(s)
+	return string.gsub(tostring(s or "x"), "[^%w]", "_")
+end
+
+function DPSMate_ApplyFontString(fs, key, path, size, color, layer, justify)
+	if not fs then return end
+	if type(size) ~= "number" or size < 1 then size = 12 end
+	if type(path) ~= "string" or path == "" then path = "Fonts\\FRIZQT__.TTF" end
+	local fname = "DPSMate_Font_"..DPSMate_FontKey(key).."_"..math.floor(size)
+	local font = getglobal(fname)
+	if not font and CreateFont then
+		font = CreateFont(fname)
+	end
+	-- Erst eine geladene Face kopieren, dann Groesse setzen. SetFont ohne
+	-- geladene Face ist No-Op; ohne Seed waere der Titel leer.
+	-- https://emberveil.org/wiki/lua/widgets/Font#setfont
+	if font and font.SetFontObject then
+		if GameFontNormalSmall then
+			font:SetFontObject(GameFontNormalSmall)
+		elseif GameFontNormal then
+			font:SetFontObject(GameFontNormal)
+		end
+	end
+	if font and font.SetFont then
+		font:SetFont(path, size)
+	end
+	if font and fs.SetFontObject then
+		fs:SetFontObject(font)
+	end
+	if layer and fs.SetDrawLayer then fs:SetDrawLayer(layer) end
+	if justify then
+		if fs.SetJustifyH then fs:SetJustifyH(justify) end
+		local fo = fs.GetFontObject and fs:GetFontObject()
+		if fo and fo.SetJustifyH then fo:SetJustifyH(justify) end
+	end
+	if type(color) == "table" and fs.SetVertexColor then
+		fs:SetVertexColor(color[1], color[2], color[3], 1)
+	end
+end
+
+function DPSMate_ApplyWindowFonts(win)
+	if type(win) ~= "table" or not win["name"] then return end
+	local opt = DPSMate and DPSMate.Options
+	local fonts = opt and opt.fonts
+	local path = (fonts and fonts[win["barfont"]]) or "Fonts\\FRIZQT__.TTF"
+	local size = win["barfontsize"]
+	local color = win["barfontcolor"] or {1, 1, 1}
+	local name = win["name"]
+	-- Getrennte Font-Objekte: SetJustifyH schreibt sonst in dasselbe Font
+	-- und Name/Wert bekommen dieselbe Ausrichtung.
+	local keyL = "barL_"..name
+	local keyR = "barR_"..name
+	DPSMate_ApplyFontString(getglobal("DPSMate_"..name.."_ScrollFrame_Child_Total_Name"), keyL, path, size, color, "OVERLAY", "LEFT")
+	DPSMate_ApplyFontString(getglobal("DPSMate_"..name.."_ScrollFrame_Child_Total_Value"), keyR, path, size, color, "OVERLAY", "RIGHT")
+	local i
+	for i = 1, 40 do
+		DPSMate_ApplyFontString(getglobal("DPSMate_"..name.."_ScrollFrame_Child_StatusBar"..i.."_Name"), keyL, path, size, color, "OVERLAY", "LEFT")
+		DPSMate_ApplyFontString(getglobal("DPSMate_"..name.."_ScrollFrame_Child_StatusBar"..i.."_Value"), keyR, path, size, color, "OVERLAY", "RIGHT")
+	end
+	local tpath = (fonts and fonts[win["titlebarfont"]]) or "Fonts\\FRIZQT__.TTF"
+	local tsize = win["titlebarfontsize"]
+	local tcolor = win["titlebarfontcolor"] or {1, 0.82, 0}
+	DPSMate_ApplyFontString(getglobal("DPSMate_"..name.."_Head_Font"), "title_"..name, tpath, tsize, tcolor, "ARTWORK", "LEFT")
+end
+
+function DPSMate_OnBarFontSizeSlider()
+	local win = DPSMate_CurrentWindow()
+	if not win then return end
+	local v = this and this.GetValue and this:GetValue()
+	if type(v) == "number" then win["barfontsize"] = v end
+	DPSMate_ApplyWindowFonts(win)
+end
+
+function DPSMate_OnTitleBarFontSizeSlider()
+	local win = DPSMate_CurrentWindow()
+	if not win then return end
+	local v = this and this.GetValue and this:GetValue()
+	if type(v) == "number" then win["titlebarfontsize"] = v end
+	DPSMate_ApplyWindowFonts(win)
+end
+
+function DPSMate_OnConfigSliderChanged(frame)
+	if frame then this = frame end
+	if not this then return end
+	local edit = this.GetName and getglobal(this:GetName().."_Editbox")
+	if edit and edit.SetText and this.GetValue then
+		local v = this:GetValue()
+		if type(v) == "number" then
+			edit:SetText(string.format("%.1f", v))
+		end
+	end
+	-- FillSetValue loest OnValueChanged aus. Ohne diese Sperre wuerde
+	-- GetValue() (oft 0/Min) die gespeicherten Settings ueberschreiben.
+	if DPSMate_SliderFilling then return end
+	if type(this.func) == "function" then
+		pcall(this.func)
+	end
+end
+
 -- ColorPickerFrame ist ColorSelect. Das Farbrad (ColorWheelTexture) zeichnet
 -- dieser Client nicht; CreateFrame("ColorSelect") ist laut Wiki verboten.
 -- https://emberveil.org/wiki/lua/widgets/ColorSelect
@@ -695,7 +915,9 @@ end
 
 local function DPSMate_FillSetValue(widget, value)
 	if widget and widget.SetValue and value ~= nil then
+		DPSMate_SliderFilling = true
 		pcall(widget.SetValue, widget, value)
+		DPSMate_SliderFilling = nil
 	end
 end
 

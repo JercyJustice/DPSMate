@@ -6,18 +6,16 @@
 	<StatusBar name="DPSMate_Bar" virtual="true">
 		<Size y="12" />
 		<Layers>
-			<Layer level="ARTWORK">
-				<FontString name="$parent_Name" inherits="TextStatusBarText" justifyH="LEFT">
+			<Layer level="OVERLAY">
+				<FontString name="$parent_Name" inherits="GameFontNormalSmall" justifyH="LEFT" justifyV="CENTER">
 					<Anchors>
-						<Anchor point="TOPLEFT" />
-						<Anchor point="BOTTOMRIGHT" />
+						<Anchor point="LEFT" />
 					</Anchors>
 				</FontString>
-				<FontString name="$parent_Value" inherits="TextStatusBarText" justifyH="RIGHT">
+				<FontString name="$parent_Value" inherits="GameFontNormalSmall" justifyH="RIGHT" justifyV="CENTER">
 					<Anchors>
-						<Anchor point="TOPLEFT"/>
-						<Anchor point="BOTTOMRIGHT">
-							<Offset x="-3" y="0" />
+						<Anchor point="RIGHT">
+							<Offset x="-4" y="0" />
 						</Anchor>
 					</Anchors>
 				</FontString>
@@ -176,9 +174,11 @@
 					</Layer>
 					<Layer level="ARTWORK">
 						<FontString name="$parent_Font" inherits="GameFontNormalSmall" justifyH="LEFT">
-							<Size x="200" y="16" />
+							<Size y="16" />
 							<Anchors>
-								<Anchor point="LEFT" />
+								<Anchor point="TOPLEFT">
+									<Offset x="4" y="0" />
+								</Anchor>
 							</Anchors>
 						</FontString>
 					</Layer>
