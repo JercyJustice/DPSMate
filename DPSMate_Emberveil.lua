@@ -1777,7 +1777,9 @@ local function TestPaintBars(rows)
 				if tv then tv:SetText(string.format("%.1f", total / TEST_CBT).." ("..total..")") end
 				if tb then
 					tb:Show()
-					local bw = child and child.GetWidth and child:GetWidth() or tb:GetWidth()
+					local bw = c["width"]
+					local fr = _G(prefix)
+					if (not bw or bw < 40) and fr and fr.GetWidth then bw = fr:GetWidth() end
 					if DPSMate.LayoutBarText then DPSMate:LayoutBarText(tb, bw, 2) end
 					if DPSMate_BindMeterBar then DPSMate_BindMeterBar(tb) end
 				end
@@ -1820,7 +1822,9 @@ local function TestPaintBars(rows)
 				statusbar.user = uname
 				if DPSMate_BindMeterBar then DPSMate_BindMeterBar(statusbar) end
 				statusbar:Show()
-				local bw = child and child.GetWidth and child:GetWidth() or statusbar:GetWidth()
+				local bw = c["width"]
+				local fr = _G(prefix)
+				if (not bw or bw < 40) and fr and fr.GetWidth then bw = fr:GetWidth() end
 				if DPSMate.LayoutBarText then DPSMate:LayoutBarText(statusbar, bw, indent) end
 			end
 		end

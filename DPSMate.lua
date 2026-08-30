@@ -2,7 +2,7 @@ DPSMateFile("DPSMate.lua")
 -- Global Variables
 DPSMate = {}
 DPSMateMark("core:start")
-DPSMate.VERSION = 86
+DPSMate.VERSION = 87
 DPSMate.LOCALE = GetLocale()
 DPSMate.SYNCVERSION = DPSMate.VERSION..DPSMate.LOCALE
 DPSMate.Parser = {}
@@ -222,9 +222,60 @@ local function DPSMate_TextWidth(fs, maxW)
 	if fs and fs.GetText then text = fs:GetText() or "" end
 	local n = string.len(text)
 	if n < 1 then n = 8 end
-	local tw = n * 9 + 24
+	local tw = n * 7 + 8
 	if maxW and maxW > 0 and tw > maxW then tw = maxW end
 	if tw < 24 then tw = 24 end
+	return tw
+end
+
+-- Balken-TOPRIGHT ist hier oft nicht der Fensterrand (StatusBar-Breite
+-- != Fensterbreite). Fensterrahmen bzw. gespeicherte width nutzen.
+local function DPSMate_MeterFrame(bar)
+	if not bar then return nil end
+	local n = ""
+	if bar.GetName then n = bar:GetName() or "" end
+	if n ~= "" then
+		local root = strgsub(n, "_ScrollFrame.*$", "")
+		root = strgsub(root, "_Head.*$", "")
+		if root ~= "" and root ~= n then
+			local f = _G(root)
+			if f then return f end
+		end
+	end
+	return nil
+end
+
+local function DPSMate_MeterWidth(bar, fallback)
+	local w
+	local win = DPSMate_MeterFrame(bar)
+	if win and win.Key and DPSMateSettings and DPSMateSettings.windows and DPSMateSettings.windows[win.Key] then
+		w = DPSMateSettings.windows[win.Key]["width"]
+	end
+	if (not w or w < 40) and win and win.GetWidth then
+		w = win:GetWidth()
+	end
+	if (not w or w < 40) and fallback and fallback > 40 then
+		w = fallback
+	end
+	if not w or w < 40 then w = 150 end
+	return w
+end
+
+-- Wiki: FontString:GetStringWidth misst die Pixelbreite (auch vor dem Draw).
+-- https://emberveil.org/wiki/lua/widgets/FontString#getstringwidth
+local function DPSMate_ValueWidth(fs)
+	local tw = 0
+	if fs and fs.GetStringWidth then
+		tw = fs:GetStringWidth() or 0
+	end
+	if tw < 1 then
+		local text = ""
+		if fs and fs.GetText then text = fs:GetText() or "" end
+		local n = string.len(text)
+		if n < 1 then n = 4 end
+		tw = n * 6 + 4
+	end
+	if tw < 16 then tw = 16 end
 	return tw
 end
 
@@ -237,31 +288,41 @@ local function DPSMate_PlaceLeft(fs, parent, x, maxW)
 	fs:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", x + tw, -16)
 end
 
-local function DPSMate_PlaceRight(fs, parent, x, maxW)
+-- Schmale Box, rechter Rand = Fensterbreite. Beide Anker an Balken-TOPLEFT
+-- (dasselbe Muster wie die Namen). https://emberveil.org/wiki/lua/widgets/Region#setpoint
+local function DPSMate_PlaceRight(fs, parent, pad, barW)
 	if not fs or not parent then return end
 	if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(false) end
-	local tw = DPSMate_TextWidth(fs, maxW)
+	pad = pad or 4
+	local tw = DPSMate_ValueWidth(fs)
+	local bw = DPSMate_MeterWidth(parent, barW)
+	local right = bw - pad
+	local left = right - tw
+	if left < 8 then left = 8 end
 	fs:ClearAllPoints()
-	fs:SetPoint("TOPRIGHT", parent, "TOPRIGHT", x, 0)
-	fs:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", x, 0)
-	fs:SetPoint("LEFT", parent, "RIGHT", x - tw, 0)
-	if fs.SetWidth then fs:SetWidth(tw) end
+	fs:SetPoint("TOPLEFT", parent, "TOPLEFT", left, 0)
+	fs:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", right, -16)
+	if fs.SetJustifyH then fs:SetJustifyH("RIGHT") end
+	return left
 end
 
 function DPSMate:LayoutBarText(bar, width, indent)
 	if not bar then return end
 	indent = indent or 2
-	local inner = (width or 120) - indent
-	if inner < 40 then inner = 40 end
 	local name = bar.name or _G(bar:GetName().."_Name")
 	local value = bar.value or _G(bar:GetName().."_Value")
-	if name then
-		if name.SetDrawLayer then name:SetDrawLayer("OVERLAY") end
-		DPSMate_PlaceLeft(name, bar, indent, inner)
-	end
+	local bw = DPSMate_MeterWidth(bar, width)
+	local usedRight = 8
 	if value then
 		if value.SetDrawLayer then value:SetDrawLayer("OVERLAY") end
-		DPSMate_PlaceRight(value, bar, -4, inner)
+		local left = DPSMate_PlaceRight(value, bar, 4, bw)
+		if left then usedRight = bw - left end
+	end
+	if name then
+		if name.SetDrawLayer then name:SetDrawLayer("OVERLAY") end
+		local nameMax = bw - usedRight - indent - 4
+		if nameMax < 24 then nameMax = 24 end
+		DPSMate_PlaceLeft(name, bar, indent, nameMax)
 	end
 end
 
@@ -906,7 +967,9 @@ function DPSMate:SetStatusBarValue()
 			local totalBar = _G(prefix.."_ScrollFrame_Child_Total")
 			local child = _G(prefix.."_ScrollFrame_Child")
 			if totalBar then
-				local bw = child and child.GetWidth and child:GetWidth() or totalBar:GetWidth()
+				local bw = c["width"]
+				local fr = _G(prefix)
+				if (not bw or bw < 40) and fr and fr.GetWidth then bw = fr:GetWidth() end
 				DPSMate:LayoutBarText(totalBar, bw, 2)
 			end
 		end
@@ -950,7 +1013,9 @@ function DPSMate:SetStatusBarValue()
 				statusbar.user = user[i]
 				if DPSMate_BindMeterBar then DPSMate_BindMeterBar(statusbar) end
 				statusbar:Show()
-				local bw = child and child.GetWidth and child:GetWidth() or statusbar:GetWidth()
+				local bw = c["width"]
+				local fr = _G(prefix)
+				if (not bw or bw < 40) and fr and fr.GetWidth then bw = fr:GetWidth() end
 				local indent = 2
 				if c["classicons"] then indent = c["barheight"] or 19 end
 				DPSMate:LayoutBarText(statusbar, bw, indent)
