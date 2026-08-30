@@ -757,6 +757,13 @@ function DPSMate:WindowsExist()
 	return true
 end
 
+function DPSMate:ProbZero(val)
+	if not val or val == 0 then
+		return 1
+	end
+	return val
+end
+
 function DPSMate:TMax(t)
 	local max = 0
 	for _,val in pairs(t) do

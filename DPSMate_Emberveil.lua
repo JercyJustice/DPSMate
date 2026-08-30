@@ -796,6 +796,37 @@ function DPSMate_OnBarMouseUp(a, b)
 	end
 end
 
+-- 1.12-FrameXML. Fehlt FauxScrollFrame, sollen die Original-Details nicht
+-- an nil-Funktionen scheitern. https://emberveil.org/wiki/lua/widgets/Frame#setscript
+if type(FauxScrollFrame_GetOffset) ~= "function" then
+	function FauxScrollFrame_GetOffset(frame)
+		return (frame and frame.offset) or 0
+	end
+	function FauxScrollFrame_SetOffset(frame, offset)
+		if frame then frame.offset = offset or 0 end
+	end
+	function FauxScrollFrame_Update(frame, numItems, numToDisplay, valueStep)
+		if not frame then return end
+		if not frame.offset then frame.offset = 0 end
+	end
+	function FauxScrollFrame_OnVerticalScroll(value, updateFunction)
+		local frame = this
+		local height, scroll = 24, arg1
+		if type(value) == "number" and type(updateFunction) == "function" then
+			height = value
+		elseif type(value) == "function" then
+			updateFunction = value
+		end
+		if type(scroll) ~= "number" then scroll = 0 end
+		if frame then
+			frame.offset = math.floor((scroll / height) + 0.5)
+		end
+		if type(updateFunction) == "function" then
+			updateFunction()
+		end
+	end
+end
+
 function DPSMate_EnsurePlayerEval()
 	if not DPSMate or not DPSMate.Modules or not rawget then return end
 	local d = rawget(DPSMate.Modules, "DetailsDamage")

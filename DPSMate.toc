@@ -39,6 +39,10 @@ DPSMate_OptionsFuncs7d1.lua
 DPSMate_OptionsFuncs8.lua
 DPSMate_OptionsFuncs9.lua
 DPSMate_PlayerEval.lua
+Damage\DPSMate_Details_Damage.lua
+Damage\DPSMate_Details_Damage.xml
+Damage\DPSMate_Details_DamageTotal.lua
+Damage\DPSMate_Details_DamageTotal.xml
 DPSMate_CastTracking.lua
 DPSMate_DataBuilder.lua
 
