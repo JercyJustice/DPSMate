@@ -631,13 +631,14 @@ function DPSMate.DB:OnEvent(event)
 		
 		player = UnitName("player")
 		
-		-- Fixing an Log Bug
-		if not DPSMateUser["LASTRESETDPSMATE"] or DPSMateUser["LASTRESETDPSMATE"][2]<DPSMate.VERSION then
+		-- Schema, nicht Anzeige-VERSION: sonst wuerde jeder Build-Bump
+		-- User/Ability-SavedVariables leeren.
+		if not DPSMateUser["LASTRESETDPSMATE"] or DPSMateUser["LASTRESETDPSMATE"][2]<85 then
 			DPSMateUser = {}
 			DPSMateAbility = {}
 			DPSMateUser["LASTRESETDPSMATE"] = {
 				[1] = 1,
-				[2] = DPSMate.VERSION
+				[2] = 85
 			}
 			DPSMate.Options:PopUpAccept(true, true)
 		end

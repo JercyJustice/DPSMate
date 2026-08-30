@@ -2,6 +2,7 @@
 ## Title: DPSMate |cFFFF8080-Shino-|r
 ## Notes: DPSMate is an advanced combat analyzation tool.
 ## Author: Shino <Synced> - Kronos
+## Version: 86
 ## SavedVariables: DPSMateSettings
 ## SavedVariablesPerCharacter: DPSMateUser, DPSMateAbility, DPSMateDamageDone, DPSMateEDT, DPSMateEDD, DPSMateDamageTaken, DPSMateDispels, DPSMateInterrupts, DPSMateDeaths, DPSMateEHealing, DPSMateTHealing, DPSMateHealingTaken, DPSMateEHealingTaken, DPSMateOverhealing, DPSMateOverhealingTaken, DPSMateAbsorbs, DPSMateThreat, DPSMateAurasGained, DPSMateCombatTime, DPSMateHistory, DPSMateAttempts, DPSMatePlayer, DPSMateLoot, DPSMateFails, DPSMateCCBreaker
 

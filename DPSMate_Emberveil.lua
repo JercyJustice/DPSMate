@@ -1605,8 +1605,423 @@ function DPSMate_SendChat(msg, chatType, language, channel)
 		pumpFrame = CreateFrame("Frame", "DPSMateChatQueue")
 	end
 	if not pumpFrame:GetScript("OnUpdate") then
-		pumpFrame.wait = INTERVAL   -- send the first line on the next frame
+		pumpFrame.wait = INTERVAL
 		pumpFrame.last = GetTime()
 		pumpFrame:SetScript("OnUpdate", Pump)
 	end
+end
+
+----------------------------------------------------------------------------------
+--------------                    TEST MODE FIGHT                   --------------
+----------------------------------------------------------------------------------
+-- Original-Testmode malt nur "Test 1" ohne statusbar.user und ohne DB.
+-- Linksklick -> "Could not find this user!". Hier ein Vanilla-Raid-Fight
+-- (ca. 3 min), damit die Details anklickbar sind.
+
+local TEST_CBT = 180
+
+local function TestSpell(en)
+	if not en then return "AutoAttack" end
+	if (en == "AutoAttack" or en == "AutoShot") and DPSMate and DPSMate.L and type(DPSMate.L[en]) == "string" then
+		return DPSMate.L[en]
+	end
+	local bs = DPSMate and DPSMate.BabbleSpell
+	if bs and type(bs.GetTranslation) == "function" then
+		local ok, t = pcall(bs.GetTranslation, bs, en)
+		if ok and type(t) == "string" and t ~= "" and t ~= "None" then return t end
+	end
+	return en
+end
+
+local function TestEnsureUser(name, class)
+	if not DPSMateUser then DPSMateUser = {} end
+	if DPSMate.DB and DPSMate.DB.BuildUser then
+		DPSMate.DB:BuildUser(name, class)
+	end
+	if not DPSMateUser[name] then
+		DPSMateUser[name] = {
+			[1] = (DPSMate.TableLength and DPSMate:TableLength(DPSMateUser) or 1) + 1,
+			[2] = class,
+		}
+		DPSMate.UserId = nil
+	end
+	DPSMateUser[name][2] = class
+	return DPSMateUser[name][1]
+end
+
+local function TestEnsureAbility(name)
+	if not DPSMateAbility then DPSMateAbility = {} end
+	if DPSMate.DB and DPSMate.DB.BuildAbility then
+		DPSMate.DB:BuildAbility(name)
+	end
+	if not DPSMateAbility[name] then
+		DPSMateAbility[name] = {
+			[1] = (DPSMate.TableLength and DPSMate:TableLength(DPSMateAbility) or 1) + 1,
+		}
+		DPSMate.AbilityId = nil
+	end
+	return DPSMateAbility[name][1]
+end
+
+local function TestSeries(amount, dur)
+	local ts, n, acc, s = {}, 24, 0, 0
+	if amount < 1 then return ts end
+	for s = 1, n do
+		local t = math.floor(s * dur / n)
+		if t < 1 then t = 1 end
+		local chunk = math.floor(amount / n)
+		if s == n then
+			chunk = amount - acc
+		else
+			chunk = math.floor(chunk * (0.62 + ((s * 7) % 9) * 0.08))
+			if chunk < 1 then chunk = 1 end
+		end
+		if chunk < 0 then chunk = 0 end
+		ts[t] = (ts[t] or 0) + chunk
+		acc = acc + chunk
+	end
+	return ts
+end
+
+-- hits, crits, miss, parry, dodge, resist, glance, block, hitAvg, critAvg
+local function TestAbil(amount, hits, crits, miss, parry, dodge, resist, glance, block, hitAvg, critAvg)
+	hits = hits or 0
+	crits = crits or 0
+	miss = miss or 0
+	parry = parry or 0
+	dodge = dodge or 0
+	resist = resist or 0
+	glance = glance or 0
+	block = block or 0
+	hitAvg = hitAvg or 0
+	critAvg = critAvg or 0
+	local gAvg, bAvg = 0, 0
+	if glance > 0 then gAvg = math.floor(hitAvg * 0.72) end
+	if block > 0 then bAvg = math.floor(hitAvg * 0.55) end
+	local hMin, hMax = 0, 0
+	if hits > 0 then
+		hMin = math.max(1, math.floor(hitAvg * 0.68))
+		hMax = math.floor(hitAvg * 1.38)
+	end
+	local cMin, cMax = 0, 0
+	if crits > 0 then
+		cMin = math.max(1, math.floor(critAvg * 0.78))
+		cMax = math.floor(critAvg * 1.42)
+	end
+	return {
+		[1] = hits, [2] = hMin, [3] = hMax, [4] = hitAvg,
+		[5] = crits, [6] = cMin, [7] = cMax, [8] = critAvg,
+		[9] = miss, [10] = parry, [11] = dodge, [12] = resist,
+		[13] = amount,
+		[14] = glance,
+		[15] = glance > 0 and math.max(1, math.floor(gAvg * 0.7)) or 0,
+		[16] = glance > 0 and math.floor(gAvg * 1.2) or 0,
+		[17] = gAvg,
+		[18] = block,
+		[19] = block > 0 and math.max(1, math.floor(bAvg * 0.7)) or 0,
+		[20] = block > 0 and math.floor(bAvg * 1.2) or 0,
+		[21] = bAvg,
+		[22] = hits + crits + miss + parry + dodge + resist + glance + block,
+		["i"] = TestSeries(amount, TEST_CBT),
+	}
+end
+
+local function TestPutPlayer(name, class, list)
+	local uid = TestEnsureUser(name, class)
+	local rec, tot, i = { i = 0 }, 0, 1
+	for i = 1, table.getn(list) do
+		local row = list[i]
+		local abn = TestSpell(row[1])
+		local aid = TestEnsureAbility(abn)
+		rec[aid] = TestAbil(row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12])
+		tot = tot + (row[2] or 0)
+	end
+	rec.i = tot
+	if not DPSMateDamageDone then DPSMateDamageDone = { [1] = {}, [2] = {} } end
+	if not DPSMateDamageDone[1] then DPSMateDamageDone[1] = {} end
+	if not DPSMateDamageDone[2] then DPSMateDamageDone[2] = {} end
+	DPSMateDamageDone[1][uid] = rec
+	DPSMateDamageDone[2][uid] = rec
+	if DPSMateCombatTime then
+		if not DPSMateCombatTime.effective then DPSMateCombatTime.effective = { [1] = {}, [2] = {} } end
+		if not DPSMateCombatTime.effective[1] then DPSMateCombatTime.effective[1] = {} end
+		if not DPSMateCombatTime.effective[2] then DPSMateCombatTime.effective[2] = {} end
+		DPSMateCombatTime.effective[1][name] = TEST_CBT - 6
+		DPSMateCombatTime.effective[2][name] = TEST_CBT - 6
+	end
+	return tot, uid
+end
+
+local function TestPaintBars(rows)
+	if not DPSMateSettings or not DPSMateSettings.windows then return end
+	local _G = getglobal
+	if DPSMate.HideStatusBars then DPSMate:HideStatusBars() end
+	local maxD, total, i = 1, 0, 1
+	for i = 1, table.getn(rows) do
+		if rows[i][2] > maxD then maxD = rows[i][2] end
+		total = total + rows[i][2]
+	end
+	for k, c in pairs(DPSMateSettings.windows) do
+		if c and c["name"] then
+			local prefix = "DPSMate_"..c["name"]
+			local child = _G(prefix.."_ScrollFrame_Child")
+			local indent = 2
+			if c["classicons"] then indent = c["barheight"] or 19 end
+			local maxBars = 40
+			if DPSMate.MaxVisibleBars then maxBars = DPSMate:MaxVisibleBars(c) end
+			if DPSMateSettings["showtotals"] then
+				local tn = _G(prefix.."_ScrollFrame_Child_Total_Name")
+				local tv = _G(prefix.."_ScrollFrame_Child_Total_Value")
+				local tb = _G(prefix.."_ScrollFrame_Child_Total")
+				if tn then tn:SetText(DPSMate.L and DPSMate.L["total"] or "Total") end
+				if tv then tv:SetText(string.format("%.1f", total / TEST_CBT).." ("..total..")") end
+				if tb then
+					tb:Show()
+					local bw = child and child.GetWidth and child:GetWidth() or tb:GetWidth()
+					if DPSMate.LayoutBarText then DPSMate:LayoutBarText(tb, bw, 2) end
+					if DPSMate_BindMeterBar then DPSMate_BindMeterBar(tb) end
+				end
+			end
+			local hf = _G(prefix.."_Head_Font")
+			if hf then
+				local modeArgs = DPSMate.Options and DPSMate.Options.Options and DPSMate.Options.Options[1] and DPSMate.Options.Options[1]["args"]
+				local modeName = (modeArgs and modeArgs[c["CurMode"]] and modeArgs[c["CurMode"]].name) or c["CurMode"] or "DPS"
+				local tstr = "3:00m"
+				if DPSMate.Options and DPSMate.Options.FormatTime then
+					tstr = DPSMate.Options:FormatTime(TEST_CBT) or tstr
+				end
+				hf:SetText(tostring(modeName).." ["..tstr.."]")
+				local fr = _G(prefix)
+				if fr and DPSMate.LayoutHeadTitle then DPSMate:LayoutHeadTitle(fr) end
+			end
+			local nshow = table.getn(rows)
+			if nshow > maxBars then nshow = maxBars end
+			for i = 1, nshow do
+				local statusbar = _G(prefix.."_ScrollFrame_Child_StatusBar"..i)
+				local nameFS = _G(prefix.."_ScrollFrame_Child_StatusBar"..i.."_Name")
+				local valueFS = _G(prefix.."_ScrollFrame_Child_StatusBar"..i.."_Value")
+				local texture = _G(prefix.."_ScrollFrame_Child_StatusBar"..i.."_Icon")
+				if not statusbar then break end
+				if child then child:SetHeight((i + 1) * (c["barheight"] + c["barspacing"])) end
+				local uname, dmg, class = rows[i][1], rows[i][2], rows[i][3]
+				local r, g, b, img = 0.78, 0.61, 0.43, class or "warrior"
+				if DPSMate.GetClassColor then
+					r, g, b, img = DPSMate:GetClassColor(uname)
+				end
+				statusbar:SetStatusBarColor(r, g, b, 1)
+				local p = ""
+				if c["ranks"] then p = i..". " end
+				if nameFS then nameFS:SetText(p..uname) end
+				if valueFS then valueFS:SetText(string.format("%.1f", dmg / TEST_CBT).." ("..dmg..")") end
+				if texture and img then
+					texture:SetTexture("Interface\\AddOns\\DPSMate\\images\\class\\"..string.lower(img))
+				end
+				statusbar:SetValue(100 * dmg / maxD)
+				statusbar.user = uname
+				if DPSMate_BindMeterBar then DPSMate_BindMeterBar(statusbar) end
+				statusbar:Show()
+				local bw = child and child.GetWidth and child:GetWidth() or statusbar:GetWidth()
+				if DPSMate.LayoutBarText then DPSMate:LayoutBarText(statusbar, bw, indent) end
+			end
+		end
+	end
+end
+
+function DPSMate_ClearTestFight()
+	local snap = DPSMate.Options and DPSMate.Options._testSnap
+	if not snap then return end
+	if DPSMateDamageDone then
+		local i
+		for i = 1, table.getn(snap.uids) do
+			local uid = snap.uids[i]
+			if DPSMateDamageDone[1] then DPSMateDamageDone[1][uid] = nil end
+			if DPSMateDamageDone[2] then DPSMateDamageDone[2][uid] = nil end
+		end
+	end
+	if DPSMateCombatTime then
+		DPSMateCombatTime.total = snap.total
+		DPSMateCombatTime.current = snap.current
+		if DPSMateCombatTime.effective then
+			local i
+			for i = 1, table.getn(snap.names) do
+				local n = snap.names[i]
+				if DPSMateCombatTime.effective[1] then
+					DPSMateCombatTime.effective[1][n] = snap.eff1[n]
+				end
+				if DPSMateCombatTime.effective[2] then
+					DPSMateCombatTime.effective[2][n] = snap.eff2[n]
+				end
+			end
+		end
+	end
+	if DPSMate.Parser and DPSMate.Parser.TargetParty then
+		local i
+		for i = 1, table.getn(snap.names) do
+			if snap.party[snap.names[i]] == nil then
+				DPSMate.Parser.TargetParty[snap.names[i]] = nil
+			end
+		end
+	end
+	DPSMate.Options._testSnap = nil
+end
+
+function DPSMate_SeedTestFight()
+	if DPSMate.Options and DPSMate.Options._testSnap then
+		DPSMate_ClearTestFight()
+	end
+	if not DPSMateCombatTime then
+		DPSMateCombatTime = { total = 1, current = 1, segments = {}, effective = { [1] = {}, [2] = {} } }
+	end
+	local names = {
+		"Rennick", "Thrain", "Aelira", "Morvane", "Kaelen", "Huffer",
+		"Thornpaw", "Selene", "Stormhoof", "Lightbrand", "Oakwhisper",
+		"Stonewall", "Whisperheal",
+	}
+	local snap = {
+		total = DPSMateCombatTime.total or 1,
+		current = DPSMateCombatTime.current or 1,
+		eff1 = {},
+		eff2 = {},
+		party = {},
+		names = names,
+		uids = {},
+	}
+	local i
+	for i = 1, table.getn(names) do
+		local n = names[i]
+		if DPSMateCombatTime.effective and DPSMateCombatTime.effective[1] then
+			snap.eff1[n] = DPSMateCombatTime.effective[1][n]
+		end
+		if DPSMateCombatTime.effective and DPSMateCombatTime.effective[2] then
+			snap.eff2[n] = DPSMateCombatTime.effective[2][n]
+		end
+		if DPSMate.Parser and DPSMate.Parser.TargetParty then
+			snap.party[n] = DPSMate.Parser.TargetParty[n]
+			DPSMate.Parser.TargetParty[n] = true
+		end
+	end
+	DPSMateCombatTime.total = TEST_CBT
+	DPSMateCombatTime.current = TEST_CBT
+
+	-- { spell, amount, hits, crits, miss, parry, dodge, resist, glance, block, hitAvg, critAvg }
+	local rows = {}
+	local function addRow(name, class, dmg)
+		table.insert(rows, { name, dmg, class })
+	end
+
+	addRow("Rennick", "rogue", TestPutPlayer("Rennick", "rogue", {
+		{ "AutoAttack", 41200, 168, 42, 14, 9, 11, 0, 22, 3, 178, 356 },
+		{ "Sinister Strike", 36800, 86, 21, 5, 4, 6, 0, 0, 0, 318, 636 },
+		{ "Backstab", 27400, 38, 14, 3, 2, 2, 0, 0, 0, 512, 1024 },
+		{ "Eviscerate", 9800, 12, 4, 1, 1, 1, 0, 0, 0, 610, 1220 },
+		{ "Blade Flurry", 3600, 18, 4, 2, 1, 1, 0, 0, 0, 150, 300 },
+	}))
+	addRow("Thrain", "warrior", TestPutPlayer("Thrain", "warrior", {
+		{ "AutoAttack", 39800, 150, 28, 10, 12, 14, 0, 30, 6, 210, 420 },
+		{ "Heroic Strike", 28600, 72, 14, 4, 6, 5, 0, 0, 0, 330, 660 },
+		{ "Bloodthirst", 22400, 38, 9, 2, 3, 3, 0, 0, 0, 470, 940 },
+		{ "Whirlwind", 12200, 22, 5, 2, 2, 2, 0, 0, 0, 430, 860 },
+		{ "Execute", 5000, 6, 2, 0, 1, 1, 0, 0, 0, 620, 1240 },
+	}))
+	addRow("Aelira", "mage", TestPutPlayer("Aelira", "mage", {
+		{ "Fireball", 61200, 78, 22, 0, 0, 0, 8, 0, 0, 580, 1160 },
+		{ "Fire Blast", 18400, 28, 7, 0, 0, 0, 3, 0, 0, 510, 1020 },
+		{ "Scorch", 12800, 36, 8, 0, 0, 0, 4, 0, 0, 280, 560 },
+		{ "Pyroblast", 6600, 4, 2, 0, 0, 0, 1, 0, 0, 1100, 2200 },
+	}))
+	addRow("Morvane", "warlock", TestPutPlayer("Morvane", "warlock", {
+		{ "Shadow Bolt", 54800, 70, 18, 0, 0, 0, 9, 0, 0, 600, 1200 },
+		{ "Corruption", 18600, 90, 0, 0, 0, 0, 6, 0, 0, 206, 0 },
+		{ "Immolate", 12400, 48, 0, 0, 0, 0, 4, 0, 0, 258, 0 },
+		{ "Searing Pain", 4200, 14, 3, 0, 0, 0, 2, 0, 0, 240, 480 },
+		{ "Siphon Life", 1800, 24, 0, 0, 0, 0, 2, 0, 0, 75, 0 },
+	}))
+	local hunterD = TestPutPlayer("Kaelen", "hunter", {
+		{ "Auto Shot", 28600, 110, 22, 8, 0, 0, 0, 0, 0, 210, 420 },
+		{ "Aimed Shot", 32400, 36, 10, 3, 0, 0, 0, 0, 0, 700, 1400 },
+		{ "Multi-Shot", 14800, 22, 6, 2, 0, 0, 0, 0, 0, 520, 1040 },
+		{ "Arcane Shot", 6200, 18, 4, 1, 0, 0, 2, 0, 0, 270, 540 },
+		{ "Serpent Sting", 4400, 40, 0, 0, 0, 0, 3, 0, 0, 110, 0 },
+	})
+	local petD = TestPutPlayer("Huffer", "warrior", {
+		{ "AutoAttack", 12400, 80, 12, 6, 8, 9, 0, 10, 2, 130, 260 },
+		{ "Claw", 6200, 40, 8, 3, 4, 4, 0, 0, 0, 128, 256 },
+		{ "Bite", 3400, 16, 4, 2, 2, 2, 0, 0, 0, 170, 340 },
+	})
+	if DPSMateUser["Huffer"] then
+		DPSMateUser["Huffer"][4] = true
+		DPSMateUser["Huffer"][6] = DPSMateUser["Kaelen"][1]
+	end
+	if DPSMateUser["Kaelen"] then DPSMateUser["Kaelen"][5] = "Huffer" end
+	local merge = true
+	if DPSMateSettings and DPSMateSettings["mergepets"] == false then merge = false end
+	if merge then
+		addRow("Kaelen", "hunter", hunterD + petD)
+	else
+		addRow("Kaelen", "hunter", hunterD)
+		addRow("Huffer", "warrior", petD)
+	end
+	addRow("Thornpaw", "druid", TestPutPlayer("Thornpaw", "druid", {
+		{ "AutoAttack", 26800, 120, 24, 8, 7, 9, 0, 18, 2, 180, 360 },
+		{ "Shred", 31200, 42, 14, 3, 3, 4, 0, 0, 0, 560, 1120 },
+		{ "Ferocious Bite", 12800, 10, 3, 1, 1, 1, 0, 0, 0, 960, 1920 },
+		{ "Rip", 5400, 8, 0, 0, 0, 0, 0, 0, 0, 675, 0 },
+		{ "Rake", 3000, 12, 0, 0, 1, 1, 0, 0, 0, 250, 0 },
+	}))
+	addRow("Selene", "priest", TestPutPlayer("Selene", "priest", {
+		{ "Mind Blast", 28600, 40, 12, 0, 0, 0, 5, 0, 0, 540, 1080 },
+		{ "Mind Flay", 22400, 70, 0, 0, 0, 0, 6, 0, 0, 320, 0 },
+		{ "Shadow Word: Pain", 14800, 80, 0, 0, 0, 0, 5, 0, 0, 185, 0 },
+		{ "Smite", 2600, 8, 2, 0, 0, 0, 1, 0, 0, 260, 520 },
+	}))
+	addRow("Stormhoof", "shaman", TestPutPlayer("Stormhoof", "shaman", {
+		{ "AutoAttack", 28600, 130, 22, 8, 6, 8, 0, 16, 2, 175, 350 },
+		{ "Earth Shock", 12400, 28, 6, 0, 0, 0, 3, 0, 0, 360, 720 },
+		{ "Flame Shock", 8200, 20, 0, 0, 0, 0, 2, 0, 0, 410, 0 },
+		{ "Lightning Bolt", 4800, 10, 2, 0, 0, 0, 2, 0, 0, 400, 800 },
+	}))
+	addRow("Lightbrand", "paladin", TestPutPlayer("Lightbrand", "paladin", {
+		{ "AutoAttack", 22400, 110, 16, 8, 7, 8, 0, 14, 3, 165, 330 },
+		{ "Seal of Command", 14800, 40, 10, 3, 2, 3, 0, 0, 0, 290, 580 },
+		{ "Judgement", 4200, 12, 3, 1, 1, 1, 0, 0, 0, 270, 540 },
+		{ "Hammer of Wrath", 1800, 4, 1, 0, 0, 0, 0, 0, 0, 360, 720 },
+	}))
+	addRow("Oakwhisper", "druid", TestPutPlayer("Oakwhisper", "druid", {
+		{ "Starfire", 18600, 22, 6, 0, 0, 0, 3, 0, 0, 650, 1300 },
+		{ "Wrath", 14200, 40, 8, 0, 0, 0, 4, 0, 0, 290, 580 },
+		{ "Moonfire", 6800, 24, 0, 0, 0, 0, 3, 0, 0, 283, 0 },
+	}))
+	addRow("Stonewall", "warrior", TestPutPlayer("Stonewall", "warrior", {
+		{ "AutoAttack", 16400, 90, 8, 12, 18, 16, 0, 22, 10, 140, 280 },
+		{ "Revenge", 6200, 28, 4, 2, 6, 5, 0, 0, 4, 180, 360 },
+		{ "Cleave", 3800, 14, 2, 1, 3, 2, 0, 0, 0, 230, 460 },
+		{ "Heroic Strike", 2400, 10, 1, 1, 2, 2, 0, 0, 1, 200, 400 },
+	}))
+	addRow("Whisperheal", "priest", TestPutPlayer("Whisperheal", "priest", {
+		{ "Shoot", 5200, 70, 6, 4, 0, 0, 0, 0, 0, 68, 136 },
+		{ "Smite", 2000, 8, 1, 0, 0, 0, 1, 0, 0, 220, 440 },
+	}))
+
+	local a, b
+	for a = 1, table.getn(rows) do
+		for b = a + 1, table.getn(rows) do
+			if rows[b][2] > rows[a][2] then
+				rows[a], rows[b] = rows[b], rows[a]
+			end
+		end
+	end
+	snap.uids = {}
+	for i = 1, table.getn(names) do
+		if DPSMateUser[names[i]] then
+			table.insert(snap.uids, DPSMateUser[names[i]][1])
+		end
+	end
+	if DPSMate.Options then DPSMate.Options._testSnap = snap end
+	if DPSMate.Modules and DPSMate.Modules.DPS then
+		DPSMate.Modules.DPS.DB = DPSMateDamageDone
+	end
+	if DPSMate.Modules and DPSMate.Modules.Damage then
+		DPSMate.Modules.Damage.DB = DPSMateDamageDone
+	end
+	TestPaintBars(rows)
 end
