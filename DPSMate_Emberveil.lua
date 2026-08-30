@@ -1866,6 +1866,14 @@ function DPSMate_ClearTestFight()
 			end
 		end
 	end
+	if snap.edtUids and DPSMateEDT then
+		local i
+		for i = 1, table.getn(snap.edtUids) do
+			local uid = snap.edtUids[i]
+			if DPSMateEDT[1] then DPSMateEDT[1][uid] = nil end
+			if DPSMateEDT[2] then DPSMateEDT[2][uid] = nil end
+		end
+	end
 	DPSMate.Options._testSnap = nil
 end
 
@@ -2018,6 +2026,30 @@ function DPSMate_SeedTestFight()
 	for i = 1, table.getn(names) do
 		if DPSMateUser[names[i]] then
 			table.insert(snap.uids, DPSMateUser[names[i]][1])
+		end
+	end
+	snap.edtUids = {}
+	if not DPSMateEDT then DPSMateEDT = { [1] = {}, [2] = {} } end
+	if not DPSMateEDT[1] then DPSMateEDT[1] = {} end
+	if not DPSMateEDT[2] then DPSMateEDT[2] = {} end
+	local enemies = { "Ragnaros", "Core Hound", "Lava Spawn" }
+	local ei, pi
+	for ei = 1, table.getn(enemies) do
+		TestEnsureUser(enemies[ei], "")
+		local eid = DPSMateUser[enemies[ei]][1]
+		table.insert(snap.edtUids, eid)
+		if not DPSMateEDT[1][eid] then DPSMateEDT[1][eid] = {} end
+		if not DPSMateEDT[2][eid] then DPSMateEDT[2][eid] = {} end
+		for pi = 1, table.getn(names) do
+			local pn = names[pi]
+			if DPSMateUser[pn] and DPSMateDamageDone and DPSMateDamageDone[1] then
+				local pid = DPSMateUser[pn][1]
+				local rec = DPSMateDamageDone[1][pid]
+				if rec then
+					DPSMateEDT[1][eid][pid] = rec
+					DPSMateEDT[2][eid][pid] = rec
+				end
+			end
 		end
 	end
 	if DPSMate.Options then DPSMate.Options._testSnap = snap end

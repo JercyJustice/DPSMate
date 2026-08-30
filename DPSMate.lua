@@ -2,7 +2,7 @@ DPSMateFile("DPSMate.lua")
 -- Global Variables
 DPSMate = {}
 DPSMateMark("core:start")
-DPSMate.VERSION = 87
+DPSMate.VERSION = 88
 DPSMate.LOCALE = GetLocale()
 DPSMate.SYNCVERSION = DPSMate.VERSION..DPSMate.LOCALE
 DPSMate.Parser = {}

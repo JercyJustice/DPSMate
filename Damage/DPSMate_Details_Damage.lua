@@ -78,11 +78,25 @@ local function LeftText(fs, parent, x, y, h, maxW)
 	PinFS(fs, parent, x, y, tw, h or 13)
 end
 
+-- SetPoint auf Details-Kindern ist unskaliert; das Fenster hat SetScale(0.48).
+-- Plot/Panels: XML-Mass * Scale, sonst laeuft Text aus dem Kasten.
+local function DetailsScale()
+	local sc = 0.48
+	if DPSMate_Details and DPSMate_Details.GetScale then
+		local s = DPSMate_Details:GetScale()
+		if type(s) == "number" and s > 0.05 and s < 2 then sc = s end
+	end
+	return sc
+end
+
 local graphBars = {}
+local graphFills = {}
 local graphTexs = {}
+local graphFS = {}
 local graphLabs = {}
-local GRAPH_W = 800
-local GRAPH_H = 200
+local graphMarks = {}
+local GRAPH_W = 870
+local GRAPH_H = 250
 
 function DPSMate.Modules.DetailsDamage:DrawTimeGraph()
 	local parent = DPSMate_Details_DiagramLine
@@ -94,10 +108,27 @@ function DPSMate.Modules.DetailsDamage:DrawTimeGraph()
 		local tex = _G("DPSMate_Details_GTex"..gi)
 		if tex and tex.Hide then tex:Hide() end
 		local col = _G("DPSMate_Details_GCol"..gi)
-		if col and col.Hide then col:Hide() end
+		if col then
+			if col.EnableMouse then col:EnableMouse(false) end
+			if col.Hide then col:Hide() end
+		end
+		local fill = _G("DPSMate_Details_GFill"..gi)
+		if fill and fill.Hide then fill:Hide() end
+		local gfs = _G("DPSMate_Details_GFS"..gi)
+		if gfs and gfs.Hide then gfs:Hide() end
+		if gi <= 4 then
+			local mk = _G("DPSMate_Details_GMark"..gi)
+			if mk and mk.Hide then mk:Hide() end
+		end
 	end
 	for gi = 1, table.getn(graphTexs) do
 		if graphTexs[gi] and graphTexs[gi].Hide then graphTexs[gi]:Hide() end
+	end
+	for gi = 1, table.getn(graphBars) do
+		if graphBars[gi] and graphBars[gi].Hide then graphBars[gi]:Hide() end
+	end
+	for gi = 1, table.getn(graphFills) do
+		if graphFills[gi] and graphFills[gi].Hide then graphFills[gi]:Hide() end
 	end
 	local canvas = _G("DPSMate_Details_GraphCanvas")
 	if canvas and canvas.Hide then canvas:Hide() end
@@ -133,10 +164,23 @@ function DPSMate.Modules.DetailsDamage:DrawTimeGraph()
 	if maxV < 1 then maxV = 1 end
 	n = table.getn(series)
 
+	-- Fenster ist SetScale(0.48). SetPoint auf FontStrings ist unskaliert:
+	-- XML 870/250 landet in der Welt. Plot = XML * Scale.
+	local sc = 0.48
+	if DPSMate_Details and DPSMate_Details.GetScale then
+		local s = DPSMate_Details:GetScale()
+		if type(s) == "number" and s > 0.05 and s < 2 then sc = s end
+	end
+	local plotW = 870 * sc
+	local plotH = 250 * sc
+	local mi
+	for mi = 1, table.getn(graphMarks) do
+		if graphMarks[mi] and graphMarks[mi].Hide then graphMarks[mi]:Hide() end
+	end
+
 	local yi
-	-- Nur 3 Labels im Graph (250px): oben / Mitte / unten. Keine Werte auf Procs/Pie.
 	local yvals = { maxV, maxV * 0.5, 0 }
-	local ypos = { -10, -90, -170 }
+	local ypos = { -6, -(plotH * 0.5), -(plotH - 16) }
 	for yi = 1, 3 do
 		local fs = graphLabs[yi]
 		if not fs then
@@ -147,65 +191,69 @@ function DPSMate.Modules.DetailsDamage:DrawTimeGraph()
 			DPSMate_ApplyFontString(fs, "details_glab", "Fonts\\FRIZQT__.TTF", 10, { 1, 1, 1 }, "OVERLAY")
 		end
 		fs:SetText(strformat("%.0f", yvals[yi]))
-		LeftText(fs, parent, 4, ypos[yi], 12, 40)
+		LeftText(fs, parent, 4, ypos[yi], 12, 36)
 		fs:Show()
 	end
 	for yi = 4, table.getn(graphLabs) do
 		if graphLabs[yi] and graphLabs[yi].Hide then graphLabs[yi]:Hide() end
 	end
 
-	local maxBars = 60
+	local maxBars = 50
 	local step = 1
 	if n > maxBars then step = math.ceil(n / maxBars) end
 	local count = 0
 	for i = 1, n, step do count = count + 1 end
-	if count < 1 then
-		for i = 1, table.getn(graphBars) do
-			if graphBars[i] then graphBars[i]:Hide() end
-		end
-		for i = 1, table.getn(graphTexs) do
-			if graphTexs[i] and graphTexs[i].Hide then graphTexs[i]:Hide() end
-		end
-		return
+	local gi2
+	for gi2 = 1, table.getn(graphFS) do
+		if graphFS[gi2] and graphFS[gi2].Hide then graphFS[gi2]:Hide() end
 	end
-	-- GCol-Frames ignorieren BOTTOMRIGHT und wachsen durch Procs/Pie.
-	-- Saeulen als Texture auf DiagramLine, gleiche PinFS-Anker.
-	local bw = 8
-	local inner = 800
-	if count > 0 and inner / count < 8 then
-		bw = inner / count
-	end
-	if bw < 2 then bw = 2 end
+	if count < 1 then return end
+
+	local padL, padR, padT, padB = 36, 8, 8, 10
+	local innerW = plotW - padL - padR
+	local maxH = plotH - padT - padB
+	if innerW < 20 then innerW = 20 end
+	if maxH < 20 then maxH = 20 end
+	local bw = innerW / count
 	if bw > 8 then bw = 8 end
+	if bw < 2 then bw = 2 end
 	local idx = 0
 	for i = 1, n, step do
 		idx = idx + 1
-		local x = 48 + (idx - 1) * bw
-		if x + bw > 860 then break end
+		local x = padL + (idx - 1) * bw
+		if x + bw > plotW - padR then break end
+		if graphFS[idx] and graphFS[idx].Hide then graphFS[idx]:Hide() end
 		local tex = graphTexs[idx]
 		if not tex then
 			tex = parent:CreateTexture("DPSMate_Details_GTex"..idx, "ARTWORK")
 			graphTexs[idx] = tex
 		end
 		local val = series[i] or 0
-		local maxH = 200
 		local h = maxH * (val / maxV)
 		if h < 3 then h = 3 end
 		if h > maxH then h = maxH end
-		local yTop = -(18 + (maxH - h))
+		local bh = math.floor(h + 0.5)
+		local bww = math.floor(bw - 1)
+		if bh < 3 then bh = 3 end
+		if bww < 2 then bww = 2 end
+		local yTop = -(padT + (maxH - bh))
 		if tex.ClearAllPoints then tex:ClearAllPoints() end
 		if tex.SetPoint then
 			tex:SetPoint("TOPLEFT", parent, "TOPLEFT", x, yTop)
-			tex:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", x + bw - 1, -218)
+			tex:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", x + bww, yTop - bh)
 		end
-		if tex.SetTexture then tex:SetTexture(0.85, 0.12, 0.12, 1) end
+		if tex.SetWidth then tex:SetWidth(bww) end
+		if tex.SetHeight then tex:SetHeight(bh) end
+		if tex.SetTexture then
+			tex:SetTexture(0.85, 0.12, 0.12, 1)
+		end
 		if tex.Show then tex:Show() end
 	end
 	for i = idx + 1, table.getn(graphTexs) do
 		if graphTexs[i] and graphTexs[i].Hide then graphTexs[i]:Hide() end
 	end
-	for i = 1, table.getn(graphBars) do
-		if graphBars[i] and graphBars[i].Hide then graphBars[i]:Hide() end
+	for i = 1, table.getn(graphFS) do
+		if graphFS[i] and graphFS[i].Hide then graphFS[i]:Hide() end
 	end
 end
 
@@ -224,9 +272,10 @@ function DPSMate.Modules.DetailsDamage:EnsureLogButtons(comp)
 		if btn.SetID then btn:SetID(i) end
 		if btn.EnableMouse then btn:EnableMouse(true) end
 		local y = -4 - (i - 1) * 17
+		local boxW = 245 * DetailsScale()
 		btn:ClearAllPoints()
 		btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, y)
-		btn:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", 198, y - 16)
+		btn:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", boxW - 4, y - 16)
 		local icon = _G(bname.."_Icon")
 		if not icon and btn.CreateTexture then
 			icon = btn:CreateTexture(bname.."_Icon", "ARTWORK")
@@ -338,6 +387,45 @@ function DPSMate.Modules.DetailsDamage:UpdateDetails(obj, key)
 	if DPSMate_Details.SetFrameStrata then DPSMate_Details:SetFrameStrata("TOOLTIP") end
 	if DPSMate_Details.SetToplevel then DPSMate_Details:SetToplevel(true) end
 	if DPSMate_Details.Raise then DPSMate_Details:Raise() end
+	local function HideExtra(name)
+		local b = _G(name)
+		if not b then return end
+		if b.Hide then b:Hide() end
+		if b.EnableMouse then b:EnableMouse(false) end
+	end
+	HideExtra("DPSMate_Details_SwitchMode")
+	HideExtra("DPSMate_Details_SwitchGraph")
+	HideExtra("DPSMate_Details_Individual")
+	-- Details liegt auf TOOLTIP; DropDownList sonst darunter.
+	if not DPSMate_DetailsDDHooked and type(ToggleDropDownMenu) == "function" then
+		DPSMate_DetailsDDHooked = true
+		local orig = ToggleDropDownMenu
+		ToggleDropDownMenu = function(...)
+			orig(...)
+			if not (DPSMate_Details and DPSMate_Details.IsShown and DPSMate_Details:IsShown()) then return end
+			local li, bi
+			for li = 1, 2 do
+				local dd = _G("DropDownList"..li)
+				if dd then
+					if dd.SetFrameStrata then dd:SetFrameStrata("TOOLTIP") end
+					if dd.Raise then dd:Raise() end
+				end
+				for bi = 1, 12 do
+					local b = _G("DropDownList"..li.."Button"..bi)
+					if b then
+						if b.EnableMouse then b:EnableMouse(true) end
+						local nt = _G("DropDownList"..li.."Button"..bi.."NormalText")
+						if nt and DPSMate_ApplyFontString then
+							DPSMate_ApplyFontString(nt, "dd"..li.."_"..bi, "Fonts\\FRIZQT__.TTF", 10, {1, 1, 1}, "OVERLAY")
+						end
+						if nt and nt.GetText and nt:GetText() and nt.SetText then
+							nt:SetText(nt:GetText())
+						end
+					end
+				end
+			end
+		end
+	end
 	-- Nur den Maus-Blocker aus: Compare-Graph ist 1800px breit, enableMouse.
 	local function Quiet(f)
 		if not f then return end
@@ -357,11 +445,15 @@ function DPSMate.Modules.DetailsDamage:UpdateDetails(obj, key)
 		if f and f.SetBackdropColor then f:SetBackdropColor(0.20, 0.17, 0.14, 1) end
 	end
 	Paint(DPSMate_Details)
-	Paint(DPSMate_Details_DiagramLine)
-	Paint(DPSMate_Details_Diagram)
-	Paint(DPSMate_Details_DiagramLegend)
-	Paint(DPSMate_Details_Log)
-	Paint(DPSMate_Details_LogDetails)
+	local function Tint(f, r, g, b)
+		if f and f.SetBackdropColor then f:SetBackdropColor(r, g, b, 1) end
+		if f and f.SetBackdropBorderColor then f:SetBackdropBorderColor(1, 0.82, 0, 1) end
+	end
+	Tint(DPSMate_Details_DiagramLine, 0.16, 0.16, 0.14)
+	Tint(DPSMate_Details_DiagramLegend, 0.28, 0.24, 0.10)
+	Tint(DPSMate_Details_Diagram, 0.12, 0.18, 0.22)
+	Tint(DPSMate_Details_Log, 0.12, 0.22, 0.14)
+	Tint(DPSMate_Details_LogDetails, 0.24, 0.16, 0.10)
 	
 end
 
@@ -383,10 +475,10 @@ function DPSMate.Modules.DetailsDamage:RelayoutLogDetails(comp)
 		if fs then LeftText(fs, p, x, y, h, w) end
 		return fs
 	end
-	-- Alles innerhalb 370px (LogDetails ist 380 breit).
-	pin("Casts", 6, -4, 50, 13, true)
-	pin("Amount", 58, -4, 120, 13, true)
-	-- Avg/Min/Max liegen per XML rechts ausserhalb; ausblenden.
+	local boxW = 380 * DetailsScale()
+	local xLab, xAmt, xBar, xBarR, xPct = 4, boxW * 0.28, boxW * 0.46, boxW * 0.70, boxW * 0.72
+	pin("Casts", xLab, -4, boxW * 0.26, 13, true)
+	pin("Amount", xAmt, -4, boxW * 0.40, 13, true)
 	local hideExtra = {"Average", "Min", "Max"}
 	local hi
 	for hi = 1, 3 do
@@ -397,7 +489,7 @@ function DPSMate.Modules.DetailsDamage:RelayoutLogDetails(comp)
 	local i
 	for i = 1, 8 do
 		local y = -16 - (i - 1) * 14
-		pin(rows[i], 6, y, 52, 15, true)
+		pin(rows[i], xLab, y, boxW * 0.26, 15, true)
 		local hx
 		for hx = 0, 7 do
 			local a = _G("DPSMate_Details"..comp.."_LogDetails_Average"..hx)
@@ -410,8 +502,8 @@ function DPSMate.Modules.DetailsDamage:RelayoutLogDetails(comp)
 		local wrap = _G("DPSMate_Details"..comp.."_LogDetails_Amount"..(i - 1))
 		if wrap then
 			wrap:ClearAllPoints()
-			wrap:SetPoint("TOPLEFT", p, "TOPLEFT", 58, y)
-			wrap:SetPoint("BOTTOMRIGHT", p, "TOPLEFT", 230, y - 15)
+			wrap:SetPoint("TOPLEFT", p, "TOPLEFT", xAmt, y)
+			wrap:SetPoint("BOTTOMRIGHT", p, "TOPLEFT", boxW - 4, y - 15)
 			if wrap.EnableMouse then wrap:EnableMouse(false) end
 		end
 		local amt = _G("DPSMate_Details"..comp.."_LogDetails_Amount"..(i - 1).."_Amount")
@@ -419,13 +511,15 @@ function DPSMate.Modules.DetailsDamage:RelayoutLogDetails(comp)
 		local bar = _G("DPSMate_Details"..comp.."_LogDetails_Amount"..(i - 1).."_StatusBar")
 		style(amt, false)
 		style(pct, false)
-		if amt then LeftText(amt, p, 58, y, 15) end
-		if pct then LeftText(pct, p, 168, y, 15) end
+		if amt then LeftText(amt, p, xAmt, y, 15, boxW * 0.16) end
+		if pct then LeftText(pct, p, xPct, y, 15, boxW * 0.26) end
 		if bar then
 			bar:ClearAllPoints()
-			bar:SetPoint("TOPLEFT", p, "TOPLEFT", 96, y - 2)
-			bar:SetPoint("BOTTOMRIGHT", p, "TOPLEFT", 162, y - 13)
+			bar:SetPoint("TOPLEFT", p, "TOPLEFT", xBar, y - 2)
+			bar:SetPoint("BOTTOMRIGHT", p, "TOPLEFT", xBarR, y - 13)
 			if bar.EnableMouse then bar:EnableMouse(false) end
+			if bar.SetWidth then bar:SetWidth(xBarR - xBar) end
+			if bar.SetHeight then bar:SetHeight(11) end
 		end
 	end
 end
@@ -540,6 +634,7 @@ end
 function DPSMate.Modules.DetailsDamage:EvalToggleTable(comp)
 	local a,b = {},{}
 	local d = 0
+	if type(db2) ~= "table" then return a, b, d end
 	for cat, val in pairs(db2) do
 		if val[DPSMateUser[comp or DetailsUser][1]] then
 			local c = {[1] = 0,[2] = {},[3] = {}}
@@ -661,15 +756,16 @@ function DPSMate.Modules.DetailsDamage:ScrollFrame_Update(comp)
 				if ok and tex then icon:SetTexture(tex) else icon:SetTexture("Interface\\AddOns\\DPSMate\\images\\dummy") end
 			end
 			local y = -4 - (line - 1) * 17
+			local boxW = 245 * DetailsScale()
 			btn:ClearAllPoints()
 			btn:SetPoint("TOPLEFT", logf or btn:GetParent(), "TOPLEFT", 4, y)
-			btn:SetPoint("BOTTOMRIGHT", logf or btn:GetParent(), "TOPLEFT", 198, y - 16)
+			btn:SetPoint("BOTTOMRIGHT", logf or btn:GetParent(), "TOPLEFT", boxW - 4, y - 16)
 			btn:Show()
 			if nameFS and nameFS.SetNonSpaceWrap then nameFS:SetNonSpaceWrap(false) end
 			if DPSMate_ApplyFontString then
 				DPSMate_ApplyFontString(nameFS, "details_log_name", "Fonts\\FRIZQT__.TTF", 9, {1, 1, 1}, "OVERLAY")
 			end
-			LeftText(nameFS, btn, 3, -1, 13, 160)
+			LeftText(nameFS, btn, 3, -1, 13, boxW - 12)
 			if valFS then valFS:Hide() end
 			if sel then sel:Hide() end
 		elseif btn then
@@ -679,8 +775,58 @@ function DPSMate.Modules.DetailsDamage:ScrollFrame_Update(comp)
 	end
 end
 
+function DPSMate.Modules.DetailsDamage:EnsurePlayerButtons(comp, which, num)
+	if not comp then comp = "" end
+	which = which or "player"
+	num = num or 8
+	local path = "DPSMate_Details"..comp.."_"..which
+	local parent = _G(path)
+	if not parent then return end
+	local i
+	for i = 1, num do
+		local bname = path.."_ScrollButton"..i
+		local btn = _G(bname)
+		if not btn then
+			btn = CreateFrame("Button", bname, parent)
+		end
+		if btn.SetID then btn:SetID(i) end
+		if btn.EnableMouse then btn:EnableMouse(true) end
+		local y = -4 - (i - 1) * 17
+		btn:ClearAllPoints()
+		btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, y)
+		btn:SetPoint("BOTTOMRIGHT", parent, "TOPLEFT", 230, y - 16)
+		local nf = _G(bname.."_Name")
+		if not nf and btn.CreateFontString then
+			nf = btn:CreateFontString(bname.."_Name", "OVERLAY")
+		end
+		local vf = _G(bname.."_Value")
+		if not vf and btn.CreateFontString then
+			vf = btn:CreateFontString(bname.."_Value", "OVERLAY")
+		end
+		if DPSMate_ApplyFontString then
+			DPSMate_ApplyFontString(nf, "details_pl_name", "Fonts\\FRIZQT__.TTF", 9, {1, 1, 1}, "OVERLAY")
+			DPSMate_ApplyFontString(vf, "details_pl_val", "Fonts\\FRIZQT__.TTF", 9, {1, 1, 1}, "OVERLAY")
+		end
+		if nf then LeftText(nf, btn, 3, -1, 13, 120) end
+		if vf then LeftText(vf, btn, 130, -1, 13, 90) end
+		local sel = _G(bname.."_selected")
+		if sel and sel.Hide then sel:Hide() end
+		local id, c, w = i, comp, which
+		btn:SetScript("OnClick", function(self)
+			local n = (self and self.GetID and self:GetID()) or id
+			if w == "player" then
+				DPSMate.Modules.DetailsDamage:PlayerSpells_Update(n, c)
+			else
+				DPSMate.Modules.DetailsDamage:SelectDetailsButton(n, c)
+			end
+		end)
+		btn:Show()
+	end
+end
+
 function DPSMate.Modules.DetailsDamage:Player_Update(comp)
 	if not comp then comp = DPSMate_Details.LastScroll or "" end
+	self:EnsurePlayerButtons(comp, "player", 8)
 	local line, lineplusoffset
 	local path = "DPSMate_Details"..comp.."_player"
 	local obj = _G(path.."_ScrollFrame")
@@ -691,99 +837,115 @@ function DPSMate.Modules.DetailsDamage:Player_Update(comp)
 		d3 = TTotalComp
 		d4 = PSelected2
 	end
+	if not d1 then return end
 	local len = DPSMate:TableLength(d1)
-	local coeff = len-8
-	if not obj.oset or obj.oset<0 then
-		obj.oset = 0
-	end
-	if coeff>0 then
-		if (coeff-obj.oset)<0 then
-			obj.oset = coeff
+	local off = 0
+	if obj then
+		local coeff = len-8
+		if not obj.oset or obj.oset<0 then
+			obj.oset = 0
 		end
-		FauxScrollFrame_SetOffset(obj, obj.oset)
-	end
-	FauxScrollFrame_Update(obj,len,8,24)
-	for line=1,8 do
-		lineplusoffset = line + FauxScrollFrame_GetOffset(obj)
-		if d1[lineplusoffset] ~= nil then
-			local user = DPSMate:GetUserById(d1[lineplusoffset])
-			_G(path.."_ScrollButton"..line.."_Name"):SetText(user)
-			_G(path.."_ScrollButton"..line.."_Value"):SetText(d2[lineplusoffset][1].." ("..strformat("%.2f", (d2[lineplusoffset][1]*100/d3)).."%)")
-			_G(path.."_ScrollButton"..line.."_Icon"):SetTexture("Interface\\AddOns\\DPSMate\\images\\npc")
-			if len < 8 then
-				_G(path.."_ScrollButton"..line):SetWidth(235)
-				_G(path.."_ScrollButton"..line.."_Name"):SetWidth(125)
-			else
-				_G(path.."_ScrollButton"..line):SetWidth(220)
-				_G(path.."_ScrollButton"..line.."_Name"):SetWidth(110)
+		if coeff>0 then
+			if (coeff-obj.oset)<0 then
+				obj.oset = coeff
 			end
-			_G(path.."_ScrollButton"..line):Show()
-		else
-			_G(path.."_ScrollButton"..line):Hide()
+			FauxScrollFrame_SetOffset(obj, obj.oset)
 		end
-		_G(path.."_ScrollButton"..line.."_selected"):Hide()
-		if d4 == lineplusoffset then
-			_G(path.."_ScrollButton"..line.."_selected"):Show()
+		FauxScrollFrame_Update(obj,len,8,24)
+		off = FauxScrollFrame_GetOffset(obj) or 0
+	end
+	for line=1,8 do
+		lineplusoffset = line + off
+		local btn = _G(path.."_ScrollButton"..line)
+		local nameFS = _G(path.."_ScrollButton"..line.."_Name")
+		local valFS = _G(path.."_ScrollButton"..line.."_Value")
+		local sel = _G(path.."_ScrollButton"..line.."_selected")
+		if sel then sel:Hide() end
+		if d1[lineplusoffset] ~= nil then
+			local user = DPSMate:GetUserById(d1[lineplusoffset]) or "?"
+			local amt, pct = 0, 0
+			if d2 and d2[lineplusoffset] then amt = d2[lineplusoffset][1] or 0 end
+			if d3 and d3 > 0 then pct = amt * 100 / d3 end
+			if nameFS and nameFS.SetText then nameFS:SetText(user) end
+			if valFS and valFS.SetText then valFS:SetText(amt.." ("..strformat("%.1f", pct).."%)") end
+			if nameFS then LeftText(nameFS, btn or nameFS, 3, -1, 13, 110) end
+			if valFS then LeftText(valFS, btn or valFS, 118, -1, 13, 100) end
+			if btn then btn:Show() end
+		elseif btn then
+			btn:Hide()
 		end
 	end
 end
 
 function DPSMate.Modules.DetailsDamage:PlayerSpells_Update(i, comp)
 	if not comp then comp = DPSMate_Details.LastScroll or "" end
+	self:EnsurePlayerButtons(comp, "playerSpells", 10)
 	local line, lineplusoffset
 	local path = "DPSMate_Details"..comp.."_playerSpells"
 	local obj = _G(path.."_ScrollFrame")
-	obj.id = (i + FauxScrollFrame_GetOffset(_G("DPSMate_Details"..comp.."_player_ScrollFrame"))) or obj.id
 	local d1,d2,d3,d4 = t1,t2,TTotal,PSelected
 	if comp ~= "" and comp~=nil then
 		d2 = t2Comp
 		d4 = PSelected2
 	end
-	local len = DPSMate:TableLength(d2[i][2])
-	local coeff = len-8
-	if not obj.oset or obj.oset<0 then
-		obj.oset = 0
+	if not d2 or not d2[i] or not d2[i][2] then return end
+	local poff = 0
+	local pframe = _G("DPSMate_Details"..comp.."_player_ScrollFrame")
+	if pframe and FauxScrollFrame_GetOffset then
+		poff = FauxScrollFrame_GetOffset(pframe) or 0
 	end
-	if coeff>0 then
-		if (coeff-obj.oset)<0 then
-			obj.oset = coeff
+	local rowId = i + poff
+	if not d2[rowId] or not d2[rowId][2] then rowId = i end
+	if obj then obj.id = rowId end
+	local len = DPSMate:TableLength(d2[rowId][2])
+	local off = 0
+	if obj then
+		local coeff = len-8
+		if not obj.oset or obj.oset<0 then
+			obj.oset = 0
 		end
-		FauxScrollFrame_SetOffset(obj, obj.oset)
-	end
-
-	FauxScrollFrame_Update(obj,len,10,24)
-	for line=1,10 do
-		lineplusoffset = line + FauxScrollFrame_GetOffset(obj)
-		if d2[obj.id][2][lineplusoffset] ~= nil then
-			local ability = DPSMate:GetAbilityById(d2[obj.id][2][lineplusoffset])
-			_G(path.."_ScrollButton"..line.."_Name"):SetText(ability)
-			_G(path.."_ScrollButton"..line.."_Value"):SetText(d2[obj.id][3][lineplusoffset][13].." ("..strformat("%.2f", (d2[obj.id][3][lineplusoffset][13]*100/d2[obj.id][1])).."%)")
-			_G(path.."_ScrollButton"..line.."_Icon"):SetTexture(DPSMate.BabbleSpell:GetSpellIcon(strsub(ability, 1, (strfind(ability, "%(") or 0)-1) or ability))
-			if len < 10 then
-				_G(path.."_ScrollButton"..line):SetWidth(235)
-				_G(path.."_ScrollButton"..line.."_Name"):SetWidth(125)
-			else
-				_G(path.."_ScrollButton"..line):SetWidth(220)
-				_G(path.."_ScrollButton"..line.."_Name"):SetWidth(110)
+		if coeff>0 then
+			if (coeff-obj.oset)<0 then
+				obj.oset = coeff
 			end
-			_G(path.."_ScrollButton"..line):Show()
-		else
-			_G(path.."_ScrollButton"..line):Hide()
+			FauxScrollFrame_SetOffset(obj, obj.oset)
 		end
-		_G(path.."_ScrollButton"..line.."_selected"):Hide()
-		if DetailsSelected == lineplusoffset then
-			_G(path.."_ScrollButton"..line.."_selected"):Show()
+		FauxScrollFrame_Update(obj,len,10,24)
+		off = FauxScrollFrame_GetOffset(obj) or 0
+	end
+	for line=1,10 do
+		lineplusoffset = line + off
+		local btn = _G(path.."_ScrollButton"..line)
+		local nameFS = _G(path.."_ScrollButton"..line.."_Name")
+		local valFS = _G(path.."_ScrollButton"..line.."_Value")
+		local sel = _G(path.."_ScrollButton"..line.."_selected")
+		if sel then sel:Hide() end
+		if d2[rowId][2][lineplusoffset] ~= nil then
+			local ability = DPSMate:GetAbilityById(d2[rowId][2][lineplusoffset]) or "?"
+			local amt, tot = 0, d2[rowId][1] or 1
+			if d2[rowId][3] and d2[rowId][3][lineplusoffset] then
+				amt = d2[rowId][3][lineplusoffset][13] or 0
+			end
+			if tot < 1 then tot = 1 end
+			if nameFS and nameFS.SetText then nameFS:SetText(ability) end
+			if valFS and valFS.SetText then valFS:SetText(amt.." ("..strformat("%.1f", amt*100/tot).."%)") end
+			if nameFS then LeftText(nameFS, btn or nameFS, 3, -1, 13, 120) end
+			if valFS then LeftText(valFS, btn or valFS, 130, -1, 13, 90) end
+			if btn then btn:Show() end
+		elseif btn then
+			btn:Hide()
 		end
 	end
 	if comp ~= "" and comp~=nil then
-		PSelected2 = obj.id
+		PSelected2 = rowId
 	else
-		PSelected = obj.id
+		PSelected = rowId
 	end
+	local p
 	for p=1, 8 do
-		_G("DPSMate_Details"..comp.."_player_ScrollButton"..p.."_selected"):Hide()
+		local s = _G("DPSMate_Details"..comp.."_player_ScrollButton"..p.."_selected")
+		if s then s:Hide() end
 	end
-	_G("DPSMate_Details"..comp.."_player_ScrollButton"..i.."_selected"):Show()
 	if toggle3 then
 		if toggle2 then
 			if comp ~= "" and comp~=nil then
@@ -1202,6 +1364,7 @@ end
 
 function DPSMate.Modules.DetailsDamage:ProcsDropDown()
 	local arr = DPSMate.Modules.DetailsDamage:GetAuraGainedArr(curKey)
+	if type(arr) ~= "table" then arr = {} end
 	DPSMate_Details.proc = "None"
 	
     local function on_click()
@@ -1466,13 +1629,16 @@ function DPSMate.Modules.DetailsDamage:ToggleMode(bool)
 			end
 		else
 			toggle = true
+			t1, t2, TTotal = self:EvalToggleTable()
 			self:Player_Update("")
-			self:PlayerSpells_Update(1,"")
-			self:SelectDetailsButton(1,"")
-			DPSMate_Details_playerSpells:Show()
-			DPSMate_Details_player:Show()
-			DPSMate_Details_Diagram:Hide()
-			DPSMate_Details_Log:Hide()
+			if t2 and t2[1] then
+				self:PlayerSpells_Update(1,"")
+				self:SelectDetailsButton(1,"")
+			end
+			if DPSMate_Details_playerSpells then DPSMate_Details_playerSpells:Show() end
+			if DPSMate_Details_player then DPSMate_Details_player:Show() end
+			if DPSMate_Details_Diagram then DPSMate_Details_Diagram:Hide() end
+			if DPSMate_Details_Log then DPSMate_Details_Log:Hide() end
 			
 			if DetailsUserComp then
 				self:Player_Update("_CompareDamage")

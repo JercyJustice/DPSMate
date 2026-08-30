@@ -179,7 +179,7 @@
 				<PushedTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Down"/>
 				<HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
 			</Button>
-			<Button name="$parent_SwitchMode">
+			<Button name="$parent_SwitchMode" hidden="true">
 				<Size x="22" y="22" />
 				<Anchors>
 					<Anchor point="RIGHT" relativeTo="$parent_CloseButton" relativePoint="LEFT">
@@ -206,7 +206,7 @@
 				<PushedTexture file="Interface\Buttons\UI-GroupLoot-Coin-Down"/>
 				<HighlightTexture file="Interface\Buttons\UI-GroupLoot-Coin-Highlight" alphaMode="ADD"/>
 			</Button>
-			<Button name="$parent_SwitchGraph">
+			<Button name="$parent_SwitchGraph" hidden="true">
 				<Size x="22" y="22" />
 				<Anchors>
 					<Anchor point="RIGHT" relativeTo="$parent_SwitchMode" relativePoint="LEFT">
@@ -233,7 +233,7 @@
 				<PushedTexture file="Interface\Buttons\UI-GroupLoot-Dice-Down"/>
 				<HighlightTexture file="Interface\Buttons\UI-GroupLoot-Dice-Highlight" alphaMode="ADD"/>
 			</Button>
-			<Button name="$parent_Individual">
+			<Button name="$parent_Individual" hidden="true">
 				<Size x="20" y="20" />
 				<Anchors>
 					<Anchor point="RIGHT" relativeTo="$parent_SwitchGraph" relativePoint="LEFT">
