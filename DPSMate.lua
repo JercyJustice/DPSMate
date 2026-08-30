@@ -629,6 +629,8 @@ function DPSMate:InitializeFrames()
 		else
 			_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"):SetHeight(0.00001)
 		end
+		local totalBar = _G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total")
+		if DPSMate_BindMeterBar and totalBar then DPSMate_BindMeterBar(totalBar) end
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"):SetStatusBarTexture(DPSMate.Options.statusbars[val["bartexture"]])
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total"):SetStatusBarColor(1,1,1,val["totopacity"] or 1)
 		_G("DPSMate_"..val["name"].."_ScrollFrame_Child_Total_BG"):SetTexture(DPSMate.Options.statusbars[val["bartexture"]])
@@ -674,6 +676,7 @@ function DPSMate:InitializeFrames()
 			bar:SetHeight(val["barheight"])
 			DPSMate:LayoutBarText(bar, child:GetWidth(), indent)
 			bar:SetStatusBarTexture(DPSMate.Options.statusbars[val["bartexture"]])
+			if DPSMate_BindMeterBar then DPSMate_BindMeterBar(bar) end
 			if bar.bg then
 				bar.bg:SetTexture(DPSMate.Options.statusbars[val["bartexture"]])
 			end
@@ -704,15 +707,16 @@ function DPSMate:InitializeFrames()
 	if not DPSMateSettings["enable"] then
 		self:Disable()
 	end
+	if DPSMate_EnsurePlayerEval then DPSMate_EnsurePlayerEval() end
 	
-	-- Die Detail-Fenster wurden entfernt; ausserdem fehlen auf diesem Client
-	-- immer wieder einzelne Dateien. Beides darf hier nicht abbrechen.
+	-- Detailfenster (DPSMate_PlayerEval) plus Dialoge. Fehlende Frames
+	-- duerfen den Rest der Initialisierung nicht abbrechen.
 	local function TopLevel(name)
 		local f = _G(name)
 		if f and f.SetToplevel then f:SetToplevel(true) end
 	end
 	for _, n in pairs({"DPSMate_MiniMap", "DPSMate_PopUp", "DPSMate_Logout",
-	                   "DPSMate_Report", "DPSMate_ConfigMenu"}) do
+	                   "DPSMate_Report", "DPSMate_ConfigMenu", "DPSMate_PlayerEval"}) do
 		TopLevel(n)
 	end
 end
@@ -937,6 +941,7 @@ function DPSMate:SetStatusBarValue()
 				if texture and img then texture:SetTexture("Interface\\AddOns\\DPSMate\\images\\class\\"..img) end
 				statusbar:SetValue(perc[i])
 				statusbar.user = user[i]
+				if DPSMate_BindMeterBar then DPSMate_BindMeterBar(statusbar) end
 				statusbar:Show()
 				local bw = child and child.GetWidth and child:GetWidth() or statusbar:GetWidth()
 				local indent = 2

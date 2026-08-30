@@ -748,6 +748,83 @@ function DPSMate_OnTitleBarEnableClick()
 	end
 end
 
+-- Balken-Klick. SetScript ruft handler(self, button) auf; XML setzt this/arg1.
+-- https://emberveil.org/wiki/lua/widgets/UIObject#setscript
+function DPSMate_WindowKeyFromBar(bar)
+	local p = bar
+	local i
+	for i = 1, 8 do
+		if not p then return end
+		if p.Key then return p.Key, p end
+		if p.GetParent then
+			p = p:GetParent()
+		else
+			return
+		end
+	end
+end
+
+function DPSMate_OnBarMouseUp(a, b)
+	local bar, button
+	if a and type(a) ~= "string" then
+		bar, button = a, b
+	else
+		bar, button = this, a
+	end
+	bar = bar or this
+	button = button or arg1
+	if not bar then return end
+	local name = ""
+	if bar.GetName then name = bar:GetName() or "" end
+	local isTotal = string.find(name, "_Total$")
+	if button == "RightButton" and not isTotal then
+		if DPSMate and DPSMate.Options and DPSMate.Options.InializePlayerDewDrop then
+			DPSMate.Options:InializePlayerDewDrop(bar)
+		end
+		if DPSMate and DPSMate.Options and DPSMate.Options.OpenMenu then
+			DPSMate.Options:OpenMenu(4, bar)
+		end
+		return
+	end
+	if not DPSMate or not DPSMate.Options then return end
+	if isTotal then
+		if DPSMate.Options.UpdateTotalDetails then
+			DPSMate.Options:UpdateTotalDetails(bar)
+		end
+	elseif DPSMate.Options.UpdateDetails then
+		DPSMate.Options:UpdateDetails(bar)
+	end
+end
+
+function DPSMate_EnsurePlayerEval()
+	if not DPSMate or not DPSMate.Modules or not rawget then return end
+	local d = rawget(DPSMate.Modules, "DetailsDamage")
+	if type(d) == "table" and type(d.UpdateDetails) == "function" then return end
+	if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+		DEFAULT_CHAT_FRAME:AddMessage("|cFFFF8080DPSMate|r: Detailfenster nicht geladen (DPSMate_PlayerEval.lua).")
+	end
+end
+
+function DPSMate_BindMeterBar(bar)
+	if not bar or not bar.SetScript then return end
+	if bar.EnableMouse then bar:EnableMouse(true) end
+	bar:SetScript("OnMouseUp", function(self, button)
+		DPSMate_OnBarMouseUp(self, button)
+	end)
+	local name = ""
+	if bar.GetName then name = bar:GetName() or "" end
+	if not string.find(name, "_Total$") then
+		bar:SetScript("OnEnter", function(self)
+			if DPSMate and DPSMate.Options and DPSMate.Options.ShowTooltip then
+				DPSMate.Options:ShowTooltip(self)
+			end
+		end)
+		bar:SetScript("OnLeave", function()
+			if GameTooltip and GameTooltip.Hide then GameTooltip:Hide() end
+		end)
+	end
+end
+
 function DPSMate_OnCombatEvent(a, b, c)
 	-- SetScript: handler(self, ...). OnEvent kann (self, event, arg1) sein
 	-- oder XML-Globals event/arg1. https://emberveil.org/wiki/lua/widgets/UIObject#setscript

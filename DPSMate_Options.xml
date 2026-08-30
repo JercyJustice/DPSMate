@@ -792,13 +792,16 @@
 			<OnLoad>
 				if this then
 					DPSMate_PopUp_Text:SetText(DPSMate.L["popup"])
-					DPSMate_PopUp_TotalText:SetText(DPSMate.L["total"])
-					DPSMate_PopUp_CurrentText:SetText(DPSMate.L["current"])
-					DPSMate_PopUp_CancelText:SetText(DPSMate.L["cancel"])
 					this:SetClampedToScreen()
-			
 				end
 			</OnLoad>
+			<OnShow>
+				if DPSMate_StylePanelButton then
+					DPSMate_StylePanelButton(DPSMate_PopUp_Total, DPSMate.L["total"])
+					DPSMate_StylePanelButton(DPSMate_PopUp_Current, DPSMate.L["current"])
+					DPSMate_StylePanelButton(DPSMate_PopUp_Cancel, DPSMate.L["cancel"])
+				end
+			</OnShow>
 		</Scripts>
 		<Frames>
 			<Button name="$parent_Total" inherits="UIPanelButtonTemplate">
@@ -808,19 +811,12 @@
 						<Offset x="-75" y="7" />
 					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall" text="Total">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
+					<OnLoad>
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["total"])
+						end
+					</OnLoad>
 					<OnClick>
 						DPSMate.Options:PopUpAccept(true, false)
 					</OnClick>
@@ -833,19 +829,12 @@
 						<Offset x="10" y="0" />
 					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall" text="Current">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
+					<OnLoad>
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["current"])
+						end
+					</OnLoad>
 					<OnClick>
 						DPSMate.Options:PopUpAccept(false, false)
 					</OnClick>
@@ -858,19 +847,12 @@
 						<Offset x="10" y="0" />
 					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
+					<OnLoad>
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["cancel"])
+						end
+					</OnLoad>
 					<OnClick>
 						DPSMate_PopUp:Hide()
 					</OnClick>
@@ -923,12 +905,15 @@
 			<OnLoad>
 				if this then
 					DPSMate_Vote_Text:SetText(DPSMate.L["popup"])
-					DPSMate_Vote_AcceptText:SetText(DPSMate.L["vreset"])
-					DPSMate_Vote_CancelText:SetText(DPSMate.L["vdreset"])
 					this:SetClampedToScreen()
-			
 				end
 			</OnLoad>
+			<OnShow>
+				if DPSMate_StylePanelButton then
+					DPSMate_StylePanelButton(DPSMate_Vote_Accept, DPSMate.L["vreset"])
+					DPSMate_StylePanelButton(DPSMate_Vote_Cancel, DPSMate.L["vdreset"])
+				end
+			</OnShow>
 		</Scripts>
 		<Frames>
 			<Button name="$parent_Accept" inherits="UIPanelButtonTemplate">
@@ -938,19 +923,12 @@
 						<Offset x="-50" y="7" />
 					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall" text="Total">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
+					<OnLoad>
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["vreset"])
+						end
+					</OnLoad>
 					<OnClick>
 						
 					</OnClick>
@@ -963,19 +941,12 @@
 						<Offset x="20" y="0" />
 					</Anchor>
 				</Anchors>
-				<Layers>
-					<Layer level="ARTWORK">
-						<FontString name="$parentText" inherits="GameFontNormalSmall">
-							<Size x="80" y="24" />
-							<Anchors>
-								<Anchor point="TOP">
-									<Offset x="0" y="4" />
-								</Anchor>
-							</Anchors>
-						</FontString>
-					</Layer>
-				</Layers>
 				<Scripts>
+					<OnLoad>
+						if this and DPSMate_StylePanelButton then
+							DPSMate_StylePanelButton(this, DPSMate.L["vdreset"])
+						end
+					</OnLoad>
 					<OnClick>
 						DPSMate_Vote:Hide()
 					</OnClick>
@@ -1043,12 +1014,15 @@
 			<OnLoad>
 				if this then
 					DPSMate_Logout_Text:SetText(DPSMate.L["memory"])
-					DPSMate_Logout_AcceptText:SetText(DPSMate.L["accept"])
-					DPSMate_Logout_CancelText:SetText(DPSMate.L["decline"])
 					this:SetClampedToScreen()
-			
 				end
 			</OnLoad>
+			<OnShow>
+				if DPSMate_StylePanelButton then
+					DPSMate_StylePanelButton(DPSMate_Logout_Accept, DPSMate.L["accept"])
+					DPSMate_StylePanelButton(DPSMate_Logout_Cancel, DPSMate.L["decline"])
+				end
+			</OnShow>
 		</Scripts>
 		<Frames>
 			<Button name="$parent_Accept" inherits="UIPanelButtonTemplate">

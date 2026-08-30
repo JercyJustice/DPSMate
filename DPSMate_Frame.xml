@@ -51,12 +51,7 @@
 				end
 			</OnLoad>
 			<OnMouseUp>
-				if arg1 == "LeftButton" then
-					DPSMate.Options:UpdateDetails(this)
-				else
-					DPSMate.Options:InializePlayerDewDrop(this)
-					DPSMate.Options:OpenMenu(4, this)
-				end
+				DPSMate_OnBarMouseUp(this, arg1)
 			</OnMouseUp>
 			<OnEnter>
 				DPSMate.Options:ShowTooltip()
@@ -78,7 +73,7 @@
 				GameTooltip:Hide()
 			</OnLeave>
 			<OnMouseUp>
-				DPSMate.Options:UpdateTotalDetails(this)
+				DPSMate_OnBarMouseUp(this, arg1)
 			</OnMouseUp>
 		</Scripts>
 	</StatusBar>

@@ -179,23 +179,43 @@ function DPSMate.Options:OpenColorPicker(obj, var, func)
 	ColorPickerFrame:Show()
 end
 
-function DPSMate.Options:ShowTooltip()
-	if not this.user then return end
+function DPSMate.Options:ShowTooltip(bar)
+	bar = bar or this
+	if not bar or not bar.user then return end
 	if DPSMateSettings["showtooltips"] then
-		DPSMate.TooltipKey = this:GetParent():GetParent():GetParent().Key
+		local key, win
+		if DPSMate_WindowKeyFromBar then
+			key, win = DPSMate_WindowKeyFromBar(bar)
+		end
+		if not key then
+			local p = bar.GetParent and bar:GetParent()
+			p = p and p.GetParent and p:GetParent()
+			p = p and p.GetParent and p:GetParent()
+			key = p and p.Key
+			win = p
+		end
+		if not key then return end
+		DPSMate.TooltipKey = key
 		if DPSMateSettings["tooltipanchor"] == 1 then
 			GameTooltip:SetOwner(UIParent, "BOTTOMRIGHT")
 		elseif DPSMateSettings["tooltipanchor"] == 2 then
-			GameTooltip:SetOwner(this:GetParent():GetParent():GetParent(), "RIGHT")
+			GameTooltip:SetOwner(win or UIParent, "RIGHT")
 		elseif DPSMateSettings["tooltipanchor"] == 3 then
-			GameTooltip:SetOwner(this:GetParent():GetParent():GetParent(), "LEFT")
+			GameTooltip:SetOwner(win or UIParent, "LEFT")
 		elseif DPSMateSettings["tooltipanchor"] == 4 then
-			GameTooltip:SetOwner(this:GetParent():GetParent():GetParent(), "TOP")
+			GameTooltip:SetOwner(win or UIParent, "TOP")
 		elseif DPSMateSettings["tooltipanchor"] == 5 then
-			GameTooltip:SetOwner(this:GetParent():GetParent():GetParent(), "TOPRIGHT")
+			GameTooltip:SetOwner(win or UIParent, "TOPRIGHT")
 		end
-		GameTooltip:AddLine(this.user.."'s ".._G(this:GetParent():GetParent():GetParent():GetName().."_Head_Font"):GetText(), 1,1,1)
-		DPSMate.RegistredModules[DPSMateSettings["windows"][DPSMate.TooltipKey]["CurMode"]]:ShowTooltip(this.user, DPSMate.TooltipKey)
+		local head = win and win.GetName and _G(win:GetName().."_Head_Font")
+		local headText = ""
+		if head and head.GetText then headText = head:GetText() or "" end
+		GameTooltip:AddLine(bar.user.."'s "..headText, 1,1,1)
+		local mode = DPSMateSettings["windows"][key] and DPSMateSettings["windows"][key]["CurMode"]
+		local mod = mode and DPSMate.RegistredModules and DPSMate.RegistredModules[mode]
+		if mod and mod.ShowTooltip then
+			mod:ShowTooltip(bar.user, key)
+		end
 		GameTooltip:AddLine(" ")
 		GameTooltip:AddLine(DPSMate.L["leftclickopend"])
 		GameTooltip:AddLine(DPSMate.L["rightclickopenm"])

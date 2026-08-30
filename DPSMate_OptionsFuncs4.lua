@@ -211,17 +211,51 @@ function DPSMate.Options:UpdateDetails(obj, bool, objname)
 	if objname then
 		obj = _G(objname)
 	end
-	local key = obj:GetParent():GetParent():GetParent().Key
+	if not obj then return end
+	local key
+	if DPSMate_WindowKeyFromBar then
+		key = DPSMate_WindowKeyFromBar(obj)
+	end
+	if not key and obj.GetParent then
+		local p = obj:GetParent()
+		p = p and p.GetParent and p:GetParent()
+		p = p and p.GetParent and p:GetParent()
+		key = p and p.Key
+	end
+	if not key or not DPSMateSettings["windows"][key] then return end
+	local mode = DPSMateSettings["windows"][key]["CurMode"]
+	local mod = DPSMate.RegistredModules and DPSMate.RegistredModules[mode]
 	if obj.user then
-		DPSMate.RegistredModules[DPSMateSettings["windows"][key]["CurMode"]]:OpenDetails(obj, key, bool)
+		if mod and mod.OpenDetails then
+			mod:OpenDetails(obj, key, bool)
+		elseif DPSMate.Breakdown and DPSMate.Breakdown.UpdateDetails then
+			DPSMate.Breakdown:UpdateDetails(obj, key)
+		end
 	else
 		DPSMate:SendMessage(DPSMate.L["findusererror"])
 	end
 end
 
 function DPSMate.Options:UpdateTotalDetails(obj)
-	local key = obj:GetParent():GetParent():GetParent().Key
-	DPSMate.RegistredModules[DPSMateSettings["windows"][key]["CurMode"]]:OpenTotalDetails(obj, key)
+	if not obj then return end
+	local key
+	if DPSMate_WindowKeyFromBar then
+		key = DPSMate_WindowKeyFromBar(obj)
+	end
+	if not key and obj.GetParent then
+		local p = obj:GetParent()
+		p = p and p.GetParent and p:GetParent()
+		p = p and p.GetParent and p:GetParent()
+		key = p and p.Key
+	end
+	if not key or not DPSMateSettings["windows"][key] then return end
+	local mode = DPSMateSettings["windows"][key]["CurMode"]
+	local mod = DPSMate.RegistredModules and DPSMate.RegistredModules[mode]
+	if mod and mod.OpenTotalDetails then
+		mod:OpenTotalDetails(obj, key)
+	elseif DPSMate.Breakdown and DPSMate.Breakdown.UpdateDetails then
+		DPSMate.Breakdown:UpdateDetails(obj, key)
+	end
 end
 
 function DPSMate.Options:DropDownStyleReset()

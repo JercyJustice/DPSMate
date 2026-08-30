@@ -38,6 +38,7 @@ DPSMate_OptionsFuncs7c.lua
 DPSMate_OptionsFuncs7d1.lua
 DPSMate_OptionsFuncs8.lua
 DPSMate_OptionsFuncs9.lua
+DPSMate_PlayerEval.lua
 DPSMate_CastTracking.lua
 DPSMate_DataBuilder.lua
 
